@@ -354,47 +354,13 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
         setCurrentVerseIndex(idx);
       }, [verseTrigger]);
 
-      const toggleObjective = async (index) => {
+      const toggleObjective = (index) => {
         const objective = objectives[index];
         const isNowCompleted = !objective.completed;
 
         setObjectives(prev => prev.map((obj, i) => 
           i === index ? { ...obj, completed: isNowCompleted } : obj
         ));
-
-        if (isNowCompleted) {
-          const activeEnemyId = userData.activeEnemyId || 'shambler';
-          const activeEnemy = ENEMIES[activeEnemyId] || ENEMIES.shambler;
-          const currentHealth = userData[activeEnemy.dbHealthKey] !== undefined 
-            ? userData[activeEnemy.dbHealthKey] 
-            : 100;
-
-          const damage = Math.round(20 * activeEnemy.damageMultiplier);
-          let nextHealth = Math.max(currentHealth - damage, 0);
-          let bonusCoins = 0;
-          let nextKills = userData.enemiesKilled !== undefined ? userData.enemiesKilled : 0;
-          let dbHealthVal = nextHealth;
-
-          const coinsEarned = 10;
-          const xpEarned = 15;
-
-          if (nextHealth <= 0) {
-            alert(`VICTORY! You have struck down ${activeEnemy.name}. An upgraded zombie specimen rises in their stead! You receive ${activeEnemy.victoryCoins} bonus gold coins!`);
-            dbHealthVal = 100;
-            nextHealth = 100;
-            bonusCoins = activeEnemy.victoryCoins;
-            nextKills += 1;
-          } else {
-            alert(`Direct hit! Completed daily objective dealt ${damage}% damage to ${activeEnemy.name}! (${nextHealth}% health remaining)`);
-          }
-
-          await updateUserData({
-            [activeEnemy.dbHealthKey]: dbHealthVal,
-            coins: (userData.coins || 0) + coinsEarned + bonusCoins,
-            xp: (userData.xp || 0) + xpEarned,
-            enemiesKilled: nextKills,
-          });
-        }
       };
 
       return (
@@ -427,7 +393,7 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           <div 
             className="p-5 border border-amber-900 shadow-2xl rounded-lg font-serif w-full max-w-sm flex flex-col"
             style={{
-              backgroundImage: `url('https://i.ibb.co.com/TMHJrMqz/be00dfecf025eb82e0d71620efd939d0.jpg')`,
+              backgroundImage: `url('https://i.ibb.co.com/x8qhqsmz/images.jpg')`,
               backgroundSize: 'cover',
               backgroundPosition: 'center'
             }}
