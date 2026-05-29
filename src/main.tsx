@@ -167,23 +167,33 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           return;
         }
 
-        const email = `${username.toLowerCase().replace(/[^a-z0-9]/g, '')}@grindandlockin.com`;
-
         try {
+          const guestsStr = localStorage.getItem('guest_registry');
+          const registry = guestsStr ? JSON.parse(guestsStr) : {};
+          const lowerUser = username.toLowerCase().replace(/[^a-z0-9]/g, '');
+
           if (isRegistering) {
-            await createUserWithEmailAndPassword(auth, email, password);
+            if (registry[lowerUser]) {
+              setErrorMsg('Username already taken. Please log in or choose another.');
+              return;
+            }
+            const newGuest = { uid: `guest_${lowerUser}`, displayName: username, isGuest: true };
+            registry[lowerUser] = { password, user: newGuest };
+            localStorage.setItem('guest_registry', JSON.stringify(registry));
+            localStorage.setItem('current_guest', JSON.stringify(newGuest));
+            window.location.reload();
           } else {
-            await signInWithEmailAndPassword(auth, email, password);
+            const acc = registry[lowerUser];
+            if (acc && acc.password === password) {
+              localStorage.setItem('current_guest', JSON.stringify(acc.user));
+              window.location.reload();
+            } else {
+              setErrorMsg('Invalid username or password.');
+            }
           }
         } catch (error) {
-          console.error('Guest login failed:', error);
-          if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-login-credentials') {
-             setErrorMsg('Invalid username or password. Or try registering.');
-          } else if (error.code === 'auth/email-already-in-use') {
-             setErrorMsg('Username already taken. Please log in or choose another.');
-          } else {
-             setErrorMsg('Auth failed: ' + error.message);
-          }
+           console.error('Guest login failed:', error);
+           setErrorMsg('Local auth failed: ' + error.message);
         }
       }
 
@@ -636,7 +646,7 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
     }
 
     // 6. Base / AvatarView Component
-    function AvatarView({ userData, updateUserData }) {
+    function AvatarView({ userData, updateUserData, user }) {
       const [isEditing, setIsEditing] = React.useState(false);
       const [editedName, setEditedName] = React.useState('');
 
@@ -772,17 +782,34 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
             )}
           </div>
 
-          <div className="text-center pb-8 pt-4">
+          <div className="text-center pb-8 pt-4 flex flex-col items-center gap-4">
             <button 
               onClick={() => {
                 if (confirm("Reset Campaign lore progression? System will trigger fresh prologue sequence on reload.")) {
-                  localStorage.removeItem(`sawStoryIntro_${auth.currentUser?.uid}`);
+                  if (user && user.uid) {
+                    localStorage.removeItem(`sawStoryIntro_${user.uid}`);
+                  }
                   window.location.reload();
                 }
               }}
               className="text-[10px] uppercase tracking-widest text-[#f2be72]/60 hover:text-primary transition font-mono border border-amber-950/50 p-2 hover:bg-[#120d09]"
             >
               [ Replay Campaign Prologue ]
+            </button>
+
+            <button 
+              onClick={async () => {
+                if (confirm("Disconnect and log out of the commander profile?")) {
+                  try {
+                    await signOut(auth);
+                  } catch (e) {}
+                  localStorage.removeItem('current_guest');
+                  window.location.reload();
+                }
+              }}
+              className="text-[10px] uppercase tracking-widest text-red-500 hover:text-red-400 transition font-mono border border-red-900/50 p-2 hover:bg-[#1f1212] w-full"
+            >
+              [ LOGOUT / DISCONNECT ]
             </button>
           </div>
         </div>
@@ -1382,63 +1409,78 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
       const [sawStory, setSawStory] = React.useState(true);
 
       const fetchUserData = async (currentUser) => {
+        let loadedFirebase = false;
         try {
-          const userDocRef = doc(db, 'users', currentUser.uid);
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            setUserData({
-              coins: data.coins || 0,
-              xp: data.xp || 0,
-              streak: data.streak || 0,
-              totalSessions: data.totalSessions || 0,
-              sessionHistory: data.sessionHistory || [],
-              purchasedItems: data.purchasedItems || [],
-              username: data.username || 'Operator',
-              morale: data.morale !== undefined ? data.morale : 100,
-              health: data.health !== undefined ? data.health : 100,
-              infection: data.infection !== undefined ? data.infection : 0,
-              shamblerHealth: data.shamblerHealth !== undefined ? data.shamblerHealth : 100,
-              rgbomberHealth: data.rgbomberHealth !== undefined ? data.rgbomberHealth : 100,
-              cuirascreenHealth: data.cuirascreenHealth !== undefined ? data.cuirascreenHealth : 100,
-              enemiesKilled: data.enemiesKilled !== undefined ? data.enemiesKilled : 0,
-              activeEnemyId: data.activeEnemyId || 'shambler',
-            });
-          } else {
-            // New user login: initialize to 0 XP and Coins and template values
-            const initialData = {
-              coins: 0,
-              xp: 0,
-              streak: 0,
-              totalSessions: 0,
-              sessionHistory: [],
-              purchasedItems: [],
-              username: currentUser.displayName || 'Operator',
-              morale: 100,
-              health: 100,
-              infection: 0,
-              shamblerHealth: 100,
-              rgbomberHealth: 100,
-              cuirascreenHealth: 100,
-              enemiesKilled: 0,
-              activeEnemyId: 'shambler'
-            };
-            await setDoc(userDocRef, initialData);
-            setUserData(initialData);
+          if (!currentUser.isGuest) {
+            const userDocRef = doc(db, 'users', currentUser.uid);
+            const userDoc = await getDoc(userDocRef);
+            if (userDoc.exists()) {
+              const data = userDoc.data();
+              setUserData({
+                coins: data.coins || 0,
+                xp: data.xp || 0,
+                streak: data.streak || 0,
+                totalSessions: data.totalSessions || 0,
+                sessionHistory: data.sessionHistory || [],
+                purchasedItems: data.purchasedItems || [],
+                username: data.username || 'Operator',
+                morale: data.morale !== undefined ? data.morale : 100,
+                health: data.health !== undefined ? data.health : 100,
+                infection: data.infection !== undefined ? data.infection : 0,
+                shamblerHealth: data.shamblerHealth !== undefined ? data.shamblerHealth : 100,
+                rgbomberHealth: data.rgbomberHealth !== undefined ? data.rgbomberHealth : 100,
+                cuirascreenHealth: data.cuirascreenHealth !== undefined ? data.cuirascreenHealth : 100,
+                enemiesKilled: data.enemiesKilled !== undefined ? data.enemiesKilled : 0,
+                activeEnemyId: data.activeEnemyId || 'shambler',
+              });
+              loadedFirebase = true;
+            }
           }
         } catch (e) {
-          console.warn("Telemetry database query offline fallbacks active", e);
+          console.warn("Telemetry database query offline falls back to local", e);
+        }
+
+        if (!loadedFirebase) {
+          const localStr = localStorage.getItem(`userData_${currentUser.uid}`);
+          if (localStr) {
+            setUserData(JSON.parse(localStr));
+          } else {
+            const initialData = {
+              coins: 0, xp: 0, streak: 0, totalSessions: 0, sessionHistory: [], purchasedItems: [],
+              username: currentUser.displayName || 'Operator',
+              morale: 100, health: 100, infection: 0, shamblerHealth: 100, rgbomberHealth: 100,
+              cuirascreenHealth: 100, enemiesKilled: 0, activeEnemyId: 'shambler'
+            };
+            setUserData(initialData);
+            localStorage.setItem(`userData_${currentUser.uid}`, JSON.stringify(initialData));
+            
+            // Try to set Firebase doc if not guest
+            if (!currentUser.isGuest) {
+              try {
+                const userDocRef = doc(db, 'users', currentUser.uid);
+                await setDoc(userDocRef, initialData);
+              } catch(e) {}
+            }
+          }
         }
         setLoading(false);
       };
 
       React.useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-          setUser(currentUser);
-          if (currentUser) {
-            const hasSeen = localStorage.getItem(`sawStoryIntro_${currentUser.uid}`) === 'true';
+          let guestUser = null;
+          const guestStr = localStorage.getItem('current_guest');
+          if (guestStr) {
+            try { guestUser = JSON.parse(guestStr); } catch(e) {}
+          }
+          
+          const finalUser = currentUser || guestUser;
+          setUser(finalUser);
+          
+          if (finalUser) {
+            const hasSeen = localStorage.getItem(`sawStoryIntro_${finalUser.uid}`) === 'true';
             setSawStory(hasSeen);
-            fetchUserData(currentUser);
+            fetchUserData(finalUser);
           } else {
             setSawStory(true);
             setLoading(false);
@@ -1449,13 +1491,19 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
 
       const updateUserData = async (updates) => {
         if (user) {
-          try {
-            const userDocRef = doc(db, 'users', user.uid);
-            await updateDoc(userDocRef, updates);
-          } catch (e) {
-            console.warn("Silent fallback database sync on update", e);
+          if (!user.isGuest) {
+            try {
+              const userDocRef = doc(db, 'users', user.uid);
+              await updateDoc(userDocRef, updates);
+            } catch (e) {
+              console.warn("Silent fallback database sync on update", e);
+            }
           }
-          setUserData(prev => ({ ...prev, ...updates }));
+          setUserData(prev => {
+            const newData = { ...prev, ...updates };
+            localStorage.setItem(`userData_${user.uid}`, JSON.stringify(newData));
+            return newData;
+          });
         }
       };
 
@@ -1526,7 +1574,7 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
             {activeView === 'Stats' && <StatsView userData={userData} />}
             {activeView === 'Shop' && <ShopView userData={userData} updateUserData={updateUserData} />}
             {activeView === 'Arena' && <ArenaView userData={userData} updateUserData={updateUserData} />}
-            {activeView === 'Base' && <AvatarView userData={userData} updateUserData={updateUserData} />}
+            {activeView === 'Base' && <AvatarView userData={userData} updateUserData={updateUserData} user={user} />}
           </main>
 
           {/* Bottom Custom Navigation Bar */}
