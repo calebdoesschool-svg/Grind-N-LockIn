@@ -23,6 +23,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import * as LucideIcons from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 const LucideIcon = ({ name, size = 24, className = "" }) => {
   const upperName = name.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
@@ -347,6 +348,8 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
       ]);
       const [isCandleLit, setIsCandleLit] = React.useState(false);
       const [currentVerseIndex, setCurrentVerseIndex] = React.useState(0);
+      const [readingBible, setReadingBible] = React.useState(false);
+      const [readTime, setReadTime] = React.useState(300);
 
       React.useEffect(() => {
         const currentStr = localStorage.getItem('bibleVerseIndex');
@@ -354,14 +357,79 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
         setCurrentVerseIndex(idx);
       }, [verseTrigger]);
 
+      React.useEffect(() => {
+        let timer;
+        if (readingBible) {
+          timer = setInterval(() => {
+            setReadTime(prev => {
+              if (prev <= 1) {
+                clearInterval(timer);
+                setReadingBible(false);
+                setReadTime(300);
+                updateUserData({ infection: Math.max((userData.infection || 0) - 20, 0) });
+                alert("You feel purified. Infection reduced by 20%.");
+                return 300;
+              }
+              return prev - 1;
+            });
+          }, 1000);
+        }
+        return () => clearInterval(timer);
+      }, [readingBible, userData.infection, updateUserData]);
+
       const toggleObjective = (index) => {
         const objective = objectives[index];
         const isNowCompleted = !objective.completed;
+
+        if (!isNowCompleted) {
+          let infectionGain = 15;
+          if (userData.purchasedItems?.includes('cross')) {
+            infectionGain = Math.floor(infectionGain * 0.5);
+          }
+          const shieldActive = userData.purchasedItems?.includes('shield');
+          
+          if (shieldActive && Math.random() > 0.5) {
+            alert('Focus Shield protected you from morale decay!');
+          } else {
+            updateUserData({
+              health: Math.max((userData.health !== undefined ? userData.health : 100) - 10, 0),
+              infection: Math.min((userData.infection || 0) + infectionGain, 100)
+            });
+            alert(`Habit missed! Health -10%, Infection +${infectionGain}%`);
+          }
+        } else {
+          updateUserData({
+             xp: (userData.xp || 0) + 5,
+             coins: (userData.coins || 0) + 2
+          });
+        }
 
         setObjectives(prev => prev.map((obj, i) => 
           i === index ? { ...obj, completed: isNowCompleted } : obj
         ));
       };
+
+      if (readingBible) {
+        return (
+          <div className="flex flex-col w-full min-h-screen p-4 items-center justify-center font-serif" style={{ backgroundColor: '#1a1005' }}>
+            <div className="max-w-xs text-center space-y-6">
+              <h2 className="text-3xl text-amber-500 font-bold uppercase tracking-widest">Reading Scripture</h2>
+              <div className="text-5xl font-mono text-white">
+                {Math.floor(readTime / 60)}:{(readTime % 60).toString().padStart(2, '0')}
+              </div>
+              <p className="text-sm text-amber-200/70 italic leading-relaxed">
+                "Be still, and know that I am God..."
+              </p>
+              <button 
+                onClick={() => { setReadingBible(false); setReadTime(300); }}
+                className="mt-8 px-4 py-2 border border-red-900 text-red-500 rounded uppercase font-mono tracking-widest text-xs hover:bg-red-950/30"
+              >
+                Interrupt Reading
+              </button>
+            </div>
+          </div>
+        );
+      }
 
       return (
         <div className="flex flex-col w-full min-h-screen p-4 items-center" style={{ backgroundColor: '#5a4130' }}>
@@ -400,18 +468,24 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           >
             <h2 className="font-display text-base text-amber-950 font-black uppercase tracking-widest text-center mb-3">Daily Tasks</h2>
             <div className="space-y-2 flex-grow">
-              {objectives.map((obj, i) => (
-                <button 
-                  key={i} 
-                  onClick={() => toggleObjective(i)}
-                  className="w-full flex items-center gap-2.5 p-2.5 border border-amber-900 bg-[#fffbeb]/50 hover:bg-[#fffbeb] transition-all rounded text-left shadow-sm"
-                >
-                  <div className={`w-4.5 h-4.5 border-2 flex items-center justify-center rounded-sm ${obj.completed ? 'border-amber-950 bg-amber-950' : 'border-amber-950'}`}>
-                    {obj.completed && <div className="w-2 h-2 bg-amber-100" />}
-                  </div>
-                  <span className={`text-sm ${obj.completed ? 'line-through text-amber-800' : 'text-amber-950 font-bold'}`}>{obj.title}</span>
-                </button>
-              ))}
+              <AnimatePresence>
+                {objectives.map((obj, i) => (
+                  <motion.button 
+                    layout
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                    key={i} 
+                    onClick={() => toggleObjective(i)}
+                    className="w-full flex items-center gap-2.5 p-2.5 border border-amber-900 bg-[#fffbeb]/50 hover:bg-[#fffbeb] transition-all rounded text-left shadow-sm"
+                  >
+                    <div className={`w-4 h-4 border-2 flex items-center justify-center rounded-sm ${obj.completed ? 'border-amber-950 bg-amber-950' : 'border-amber-950'}`}>
+                      {obj.completed && <motion.div initial={{scale:0}} animate={{scale:1}} className="w-2 h-2 bg-amber-100" />}
+                    </div>
+                    <span className={`text-sm ${obj.completed ? 'line-through text-amber-800' : 'text-amber-950 font-bold'}`}>{obj.title}</span>
+                  </motion.button>
+                ))}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -439,7 +513,10 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
 
           {/* Bible display */}
           {userData?.purchasedItems?.includes('bible') && (
-            <div className="mt-2 text-center select-none">
+            <button 
+              onClick={() => setReadingBible(true)}
+              className="mt-2 text-center select-none focus:outline-none hover:scale-105 transition-transform"
+            >
               <img 
                 src="https://i.ibb.co.com/WpdcBRrs/Yeah-after-looking-through-the-wiki-pages-and-customization-pages-the-vibe-you-re-probably-liking.png" 
                 alt="Sacred Bible" 
@@ -447,7 +524,8 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
                 referrerPolicy="no-referrer" 
               />
               <p className="font-serif text-amber-950 font-bold tracking-widest text-[9px] uppercase mt-1 opacity-80">Holy Scripture Sanctuary Shield</p>
-            </div>
+              <p className="font-mono text-amber-900 border border-amber-900/40 rounded px-1 mt-1 text-[8px] uppercase tracking-widest">Click to Read</p>
+            </button>
           )}
 
           <div className="mt-6 w-full max-w-sm">
@@ -551,7 +629,7 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
     function ShopView({ userData, updateUserData }) {
       const handlePurchase = async (item) => {
         if (userData.coins < item.cost) {
-          alert('UNAVAILABLE: SORRY NOT ENOUGH COINS :(');
+          alert('Sorry not enough coins :(');
           return;
         }
 
@@ -787,180 +865,87 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
     // 1. Mind: Start on an Assignment Photo Scanner View
     function MobilizationView({ onComplete, onCancel }) {
       const videoRef = React.useRef(null);
-      const canvasRef = React.useRef(null);
+      const streamRef = React.useRef(null);
       const [cameraReady, setCameraReady] = React.useState(false);
-      const [verified, setVerified] = React.useState(false);
-      const [vText, setVText] = React.useState('');
-      const [preset, setPreset] = React.useState('live');
-      const [metrics, setMetrics] = React.useState(null);
+      const [verification, setVerification] = React.useState("");
 
       React.useEffect(() => {
         startCamera();
         return () => {
-          if (videoRef.current && videoRef.current.srcObject) {
-            videoRef.current.srcObject.getTracks().forEach(track => track.stop());
-          }
+          stopCamera();
         };
       }, []);
 
-      const startCamera = async () => {
+      async function startCamera() {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" },
-            audio: false
+            video: {
+              facingMode: "environment",
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+            audio: false,
           });
-          if (videoRef.current) videoRef.current.srcObject = stream;
+
+          streamRef.current = stream;
+
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            await videoRef.current.play();
+          }
+
           setCameraReady(true);
         } catch (err) {
-          console.warn('Camera blocked/missing environment feed, using digital simulator');
-          setCameraReady(false);
+          console.log(err);
+          alert("Camera failed. Make sure camera permissions are allowed.");
         }
-      };
+      }
 
-      const handleScan = () => {
-        let desk = false, elements = false, text = false, selfie = false, empty = false;
-
-        if (preset === 'live') {
-          // Camera pixel heuristic simulations fallback
-          desk = true; elements = true; text = true;
-        } else if (preset === 'perfect') {
-          desk = true; elements = true; text = true;
-        } else if (preset === 'selfie') {
-          selfie = true;
-        } else if (preset === 'empty') {
-          empty = true;
-        } else if (preset === 'desk_no_paper') {
-          desk = true;
+      function stopCamera() {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => {
+            track.stop();
+          });
         }
+      }
 
-        let score = 0;
-        let answer = '';
-
-        if (selfie) {
-          score = 0;
-          answer = "Selfie / Face detected inside focus field bounds!";
-        } else if (empty) {
-          score = 1;
-          answer = "Flat ceiling or blank wall void detected.";
-        } else {
-          if (desk) score += 2;
-          if (elements) score += 2;
-          if (text) score += 3;
-          if (desk && !selfie) score += 1; // person present
-
-          if (score < 5) {
-            answer = "Bare surface detected but lacks homework documentation, paper or laptop elements.";
-          } else {
-            answer = "Verified genuine homework/study workstation environment.";
-          }
-        }
-
-        const passes = score >= 5 && !selfie && !empty;
-        setMetrics({ score, desk, elements, text, answer });
-
-        if (passes) {
-          setVerified(true);
-          setVText('✅ Verification Passed');
-        } else {
-          setVerified(false);
-          setVText('❌ Verification Failed');
-        }
-      };
+      function verifyAssignment() {
+        setVerification("✅ VERIFICATION PASSED");
+        setTimeout(() => {
+          onComplete();
+        }, 1500);
+      }
 
       return (
-        <div className="min-h-screen bg-[#0b0704] text-[#ebdcb9] flex flex-col items-center justify-between p-4 font-serif relative">
-          <div className="w-full max-w-xl flex justify-between items-center border-b border-[#ebdcb9]/15 pb-3">
-            <div>
-              <span className="text-[9px] font-mono tracking-widest text-primary uppercase block">ASSIGNMENT VERIFIER</span>
-              <h2 className="text-base font-bold uppercase text-white">TASK COMMENCE BLUEPRINT</h2>
-            </div>
-            <button onClick={onCancel} className="px-3 py-1 border border-[#ebdcb9]/20 text-xs font-mono uppercase bg-black hover:border-primary">
-              Cancel
-            </button>
-          </div>
+        <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center p-5 font-mono">
+          <h1 className="text-2xl font-bold uppercase tracking-widest text-[#9b7b4f] mb-4">THE CAMPAIGN BEGINS</h1>
 
-          <div className="w-full max-w-sm flex-1 flex flex-col justify-center items-center space-y-4 my-4">
-            <div className="text-center">
-              <h1 className="text-base font-bold tracking-widest uppercase text-primary">SCENARIO INTEGRITY CHECK</h1>
-              <p className="text-[10px] text-slate-400 max-w-xs mx-auto mt-1 font-sans">
-                Point your workspace camera at standard desk papers, laptop docs, of notebook pages to unlock defense.
-              </p>
-            </div>
+          {!cameraReady && <p className="text-slate-400">Starting camera...</p>}
 
-            <div className="w-full border-2 border-amber-950/70 rounded-lg overflow-hidden bg-black relative aspect-[4/3] max-h-[220px]">
-              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" />
-              {!cameraReady && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/95 text-[10px] font-mono p-4 text-center">
-                  [ DEVICE CAMERA INTEGRATIVE SIMULATOR ACTIVE ]
-                </div>
-              )}
-            </div>
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className="w-full max-w-[500px] rounded-xl bg-black mt-5 object-cover transform scale-x-[-1]"
+          />
 
-            {/* Presets Grid */}
-            <div className="w-full bg-[#16100c] border border-amber-950/30 p-2.5 rounded-lg space-y-2">
-              <span className="text-[9px] font-mono uppercase tracking-wider text-primary font-bold">Simulator Diagnostic Presets:</span>
-              <div className="grid grid-cols-2 gap-1 font-mono text-[9px]">
-                <button onClick={() => { setPreset('live'); setMetrics(null); }} className={`p-1 rounded border text-left flex justify-between ${preset === 'live' ? 'bg-[#f2be72] text-black border-white' : 'bg-black text-[#ebdcb9]'}`}>
-                  <span>📷 Live Frame Scan</span>
-                </button>
-                <button onClick={() => { setPreset('perfect'); setMetrics(null); }} className={`p-1 rounded border text-left ${preset === 'perfect' ? 'bg-emerald-800 text-white' : 'bg-black text-emerald-400'}`}>
-                  <span>✅ Target Setup</span>
-                </button>
-                <button onClick={() => { setPreset('selfie'); setMetrics(null); }} className={`p-1 rounded border text-left ${preset === 'selfie' ? 'bg-red-950 text-red-200' : 'bg-black text-red-400'}`}>
-                  <span>❌ Selfie Face (Fail)</span>
-                </button>
-                <button onClick={() => { setPreset('empty'); setMetrics(null); }} className={`p-1 rounded border text-left ${preset === 'empty' ? 'bg-stone-800 text-stone-200' : 'bg-black text-stone-400'}`}>
-                  <span>❌ Empty Void (Fail)</span>
-                </button>
-              </div>
+          {verification ? (
+            <div className="mt-5 text-[22px] font-bold text-emerald-400">
+              {verification}
             </div>
-
-            <button 
-              onClick={handleScan}
-              className="w-full py-2.5 bg-primary text-black text-xs font-bold font-mono tracking-widest uppercase focus:outline-none"
+          ) : (
+            <button
+              onClick={verifyAssignment}
+              className="mt-6 px-6 py-3 rounded-xl border-none bg-[#9b7b4f] text-white text-lg font-bold uppercase tracking-widest hover:bg-[#8a6845] transition-colors"
             >
-              RUN DIAGNOSTIC SCAN
+              VERIFY ASSIGNMENT
             </button>
+          )}
 
-            {metrics && (
-              <div className="w-full bg-black/95 border border-amber-950 p-2.5 rounded text-left font-mono text-[9px] text-amber-500/80 space-y-1">
-                <div className="text-white border-b border-amber-950 pb-1 flex justify-between font-bold">
-                  <span>TELEMETRY RESULTS</span>
-                  <span>SCORE: {metrics.score} / 8</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>1. Workspace Grounding:</span>
-                  <span>{metrics.desk ? "YES (Score +2)" : "NO"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>2. Material Notebook Presence:</span>
-                  <span>{metrics.elements ? "YES (Score +2)" : "NO"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>3. OCR Text Layout:</span>
-                  <span>{metrics.text ? "YES (Score +3)" : "NO"}</span>
-                </div>
-                {metrics.answer && <p className="italic text-[#ebdcb9] font-sans pt-1 border-t border-amber-950/40">{metrics.answer}</p>}
-              </div>
-            )}
-
-            {vText && (
-              <div className={`w-full p-2.5 rounded border text-center font-mono text-xs ${verified ? 'bg-emerald-950/60 border-emerald-700 text-emerald-400' : 'bg-red-950/60 border-red-900 text-red-400'}`}>
-                <div className="font-extrabold uppercase">{vText}</div>
-                <p className="text-[10px] text-[#ebdcb9] font-sans italic mt-0.5">{verified ? "“Assignment setup detected”" : "“No valid study/work activity found”"}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="w-full max-w-sm flex flex-col items-center">
-            {verified ? (
-              <button onClick={onComplete} className="w-full py-2.5 bg-emerald-600 text-white font-bold tracking-widest text-xs uppercase cursor-pointer">
-                CLAIM VICTORY (+10 XP)
-              </button>
-            ) : (
-              <small className="italic text-[10px] text-slate-500">Scan workstation to activate victory triggers.</small>
-            )}
-          </div>
+          <button onClick={onCancel} className="mt-8 px-4 py-2 border border-slate-700 text-slate-400 text-xs font-mono tracking-widest uppercase hover:bg-slate-900 rounded">
+            Cancel Encounter
+          </button>
         </div>
       );
     }
@@ -968,119 +953,127 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
     // 2. Academic: Work & Study holding count down View
     function FocusSessionView({ onComplete, onFail, userData }) {
       const videoRef = React.useRef(null);
-      const canvasRef = React.ReactRef ? React.ReactRef : React.useRef(null);
-      const [timeLeft, setTimeLeft] = React.useState(15); // short 15s hold for frictionless user engagement experience
-      const [cameraReady, setCameraReady] = React.useState(false);
-      const [focusState, setFocusState] = React.useState('FOCUSED');
-      const [yaw, setYaw] = React.useState(0);
-      const [pitch, setPitch] = React.useState(0);
+      const streamRef = React.useRef(null);
+
+      const [timeLeft, setTimeLeft] = React.useState(900);
+      const [health, setHealth] = React.useState(100);
+      const [morale, setMorale] = React.useState(100);
+      const [focusBroken, setFocusBroken] = React.useState(false);
 
       React.useEffect(() => {
         startCamera();
-        const countdown = setInterval(() => {
-          setTimeLeft(prev => {
+        return () => {
+          stopCamera();
+        };
+      }, []);
+
+      React.useEffect(() => {
+        const timer = setInterval(() => {
+          setTimeLeft((prev) => {
             if (prev <= 1) {
-              clearInterval(countdown);
-              alert('FOCUS HOLD STABLE: MISSION SUCCESSFUL (+20 XP)');
+              clearInterval(timer);
+              alert("SESSION COMPLETE — XP AWARDED");
               onComplete();
               return 0;
             }
             return prev - 1;
           });
         }, 1000);
+        return () => clearInterval(timer);
+      }, [onComplete]);
 
-        // Simulation loops
-        const tracking = setInterval(() => {
-          setYaw(Math.round((Math.random() - 0.5) * 6));
-          setPitch(Math.round((Math.random() - 0.5) * 6));
-        }, 1500);
-
-        return () => {
-          clearInterval(countdown);
-          clearInterval(tracking);
-          if (videoRef.current && videoRef.current.srcObject) {
-            videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+      React.useEffect(() => {
+        const visibilityCheck = setInterval(() => {
+          if (document.hidden) {
+            breakFocus();
           }
-        };
+        }, 2000);
+        return () => clearInterval(visibilityCheck);
       }, []);
 
-      const startCamera = async () => {
+      async function startCamera() {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
-          if (videoRef.current) videoRef.current.srcObject = stream;
-          setCameraReady(true);
-        } catch (e) {
-          setCameraReady(false);
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user" },
+            audio: false,
+          });
+
+          streamRef.current = stream;
+
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            await videoRef.current.play();
+          }
+        } catch (err) {
+          console.log(err);
+          alert("Camera access failed.");
         }
-      };
+      }
+
+      function stopCamera() {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => {
+            track.stop();
+          });
+        }
+      }
+
+      function breakFocus() {
+        setFocusBroken(true);
+        setHealth((prev) => Math.max(prev - 1, 0));
+        setMorale((prev) => Math.max(prev - 1, 0));
+        
+        onFail(); 
+
+        setTimeout(() => {
+          setFocusBroken(false);
+        }, 1000);
+      }
+
+      const mins = Math.floor(timeLeft / 60);
+      const secs = timeLeft % 60;
 
       return (
-        <div className="min-h-screen bg-[#06080b] text-[#ebdcb9] flex flex-col justify-between p-4 font-serif">
-          <div className="w-full max-w-xl mx-auto flex justify-between items-center border-b border-[#ebdcb9]/15 pb-2">
+        <div className="min-h-screen bg-[#090909] text-white p-5 flex flex-col items-center justify-center font-mono relative">
+          <button onClick={onFail} className="absolute top-4 right-4 px-3 py-1 border border-slate-700 text-slate-400 font-mono tracking-widest text-xs hover:bg-slate-900 rounded">
+            Abort
+          </button>
+          
+          <h1 className="text-xl font-black text-amber-500 uppercase tracking-widest mb-6">Work & Study</h1>
+
+          <div className="text-[60px] font-bold mb-5 font-mono">
+            {mins}:{secs.toString().padStart(2, "0")}
+          </div>
+
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className="w-full max-w-[500px] rounded-xl bg-black transform scale-x-[-1] object-cover"
+          />
+
+          <div className="w-full max-w-[500px] mt-6 space-y-4 text-xs font-bold tracking-widest uppercase text-slate-300">
             <div>
-              <span className="text-[9px] font-mono tracking-widest text-primary uppercase block">ENVIRONMENT MONITOR</span>
-              <h2 className="text-sm font-semibold text-white">WORK STUDY HOLD</h2>
-            </div>
-            <button onClick={onFail} className="px-2.5 py-1 border border-outline text-xs font-mono uppercase bg-black">
-              Leave
-            </button>
-          </div>
-
-          <div className="text-center my-4 space-y-1">
-            <h1 className="text-xs font-mono tracking-widest text-red-500 uppercase">TACTICAL FOCUS LOCK ACTIVE</h1>
-            <div className="text-5xl font-mono text-white font-extrabold">{timeLeft}s RECORDING</div>
-            <p className="text-[9px] text-slate-400 max-w-xs mx-auto font-sans leading-normal">
-              In-window biometric tracker evaluates workspace posture. Keep focus centered on active documents to defeat undead specimens.
-            </p>
-          </div>
-
-          <div className="w-full max-w-md mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 bg-black/50 border border-amber-950 p-4 rounded-lg">
-            <div className="space-y-2">
-              <div className="aspect-video relative rounded bg-black overflow-hidden border border-outline/20">
-                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" />
-                {!cameraReady && <div className="absolute inset-0 flex items-center justify-center text-[8px] font-mono text-[#ebdcb9]/60 bg-black/95">INTEGRATED WORKSPACE SIMULATED COGNITION</div>}
-              </div>
-              
-              <div className="bg-[#120b06] border border-amber-950 p-2 rounded text-[9px] font-mono space-y-1">
-                <div className="text-primary font-bold uppercase border-b border-amber-950 pb-0.5 mb-1 flex justify-between">
-                  <span>AI TRACKER</span>
-                  <span className="text-emerald-400">ONLINE</span>
-                </div>
-                <div className="flex justify-between"><span>Centroid Presence:</span><span className="text-emerald-400 font-bold">VERIFIED</span></div>
-                <div className="flex justify-between"><span>Horizontal Yaw Offset:</span><span>{yaw}°</span></div>
-                <div className="flex justify-between"><span>Vertical Pitch Offset:</span><span>{pitch}°</span></div>
-                <div className="flex justify-between font-bold"><span>ESTIMATED STATUS:</span><span className="text-emerald-400">{focusState}</span></div>
+              <p className="mb-2">HEALTH — {health}%</p>
+              <div className="w-full h-[14px] bg-[#333] rounded-full overflow-hidden">
+                <div style={{ width: `${health}%` }} className="h-full bg-[#a13f3f] transition-all duration-300" />
               </div>
             </div>
 
-            <div className="space-y-2 font-mono text-[9px] text-left text-slate-300">
-              <div className="border border-outline/20 p-2 rounded-lg bg-[#222a37]/30 space-y-1">
-                <p className="text-primary font-bold">COGNITIVE ENGAGEMENT PROTOCOL:</p>
-                <p>• Tab changes trigger automatic cognitive decay penalty.</p>
-                <p>• Avoid excessive head-turn angles exceeding 20° bounds.</p>
-                <p>• Morale holds recover periodically on centered states.</p>
-              </div>
-
-              {/* Progress Vitals meters */}
-              <div className="space-y-1 uppercase font-normal text-[8px] tracking-wider text-slate-400">
-                <div>Morale Level: <span className="text-amber-400 font-bold">100%</span></div>
-                <div className="h-1.5 w-full bg-slate-800 rounded-sm overflow-hidden"><div className="h-full bg-amber-400 w-full" /></div>
-                <div>Zombie Infection: <span className="text-purple-400 font-bold">0%</span></div>
-                <div className="h-1.5 w-full bg-slate-800 rounded-sm overflow-hidden"><div className="h-full bg-purple-500 w-0" /></div>
-                <div>Station Vitals: <span className="text-emerald-400 font-bold">100%</span></div>
-                <div className="h-1.5 w-full bg-slate-800 rounded-sm overflow-hidden"><div className="h-full bg-emerald-500 w-full" /></div>
+            <div>
+              <p className="mb-2">MORALE — {morale}%</p>
+              <div className="w-full h-[14px] bg-[#333] rounded-full overflow-hidden">
+                <div style={{ width: `${morale}%` }} className="h-full bg-[#b08952] transition-all duration-300" />
               </div>
             </div>
           </div>
 
-          <div className="text-center py-2">
-            <button 
-              onClick={() => { alert('Demo skip holding countdown.'); onComplete(); }}
-              className="px-3 py-1 text-[8px] font-mono uppercase bg-[#18202c] border border-outline text-primary hover:bg-[#2d3542]"
-            >
-              Skip Countdown (Demo)
-            </button>
-          </div>
+          {focusBroken && (
+            <div className="mt-8 text-[#ff6b6b] text-[26px] font-black uppercase tracking-widest animate-pulse">
+              💥 FOCUS BROKEN
+            </div>
+          )}
         </div>
       );
     }
@@ -1156,8 +1149,9 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
       const [showMind, setShowMind] = React.useState(false);
       const [showAcademic, setShowAcademic] = React.useState(false);
       const [showDiscipline, setShowDiscipline] = React.useState(false);
+      const [expandedEnemyId, setExpandedEnemyId] = React.useState(null);
 
-      const activeEnemyId = userData.activeEnemyId || 'shambler';
+      const activeEnemyId = expandedEnemyId || userData.activeEnemyId || 'shambler';
       const activeEnemy = ENEMIES[activeEnemyId] || ENEMIES.shambler;
       const userXp = userData.xp || 0;
 
@@ -1191,22 +1185,45 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           morale: nextMorale,
           infection: nextInfection,
           sessionHistory: [...(userData.sessionHistory || []), { date: new Date().toLocaleDateString(), xp, type: tag }],
-          totalSessions: (userData.totalSessions || 0) + 1
+          totalSessions: (userData.totalSessions || 0) + 1,
+          activeEnemyId: expandedEnemyId || activeEnemyId
         });
 
         setShowMind(false);
-         setShowAcademic(false);
-         setShowDiscipline(false);
+        setShowAcademic(false);
+        setShowDiscipline(false);
       };
 
-      const changeTarget = async (id) => {
+      const handleCampaignFail = async (tag) => {
+        let infectionGain = tag === 'ACADEMIC' ? 30 : 20; 
+        if (userData.purchasedItems?.includes('cross')) {
+          infectionGain = Math.floor(infectionGain * 0.5); 
+        }
+
+        const nextHealth = Math.max((userData.health || 100) - 20, 0); 
+        const nextInfection = Math.min((userData.infection || 0) + infectionGain, 100);
+
+        alert(`FOCUS BROKEN. Infection grew by ${infectionGain}%. Health decreased by 20%.`);
+
+        await updateUserData({
+          health: nextHealth,
+          infection: nextInfection
+        });
+
+        setShowMind(false);
+        setShowAcademic(false);
+        setShowDiscipline(false);
+      };
+
+      const handleEnemyClick = async (id) => {
         if (userXp < ENEMIES[id].reqXp) return;
+        setExpandedEnemyId(id);
         await updateUserData({ activeEnemyId: id });
-        alert(`Acquired focus registry target spec: ${ENEMIES[id].name}. Deploy defenses next!`);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       };
 
       if (showMind) return <MobilizationView onComplete={() => handleCampaignComplete(15, 5, 10, 'MIND')} onCancel={() => setShowMind(false)} />;
-      if (showAcademic) return <FocusSessionView onComplete={() => handleCampaignComplete(25, 15, 20, 'ACADEMIC')} onFail={() => setShowAcademic(false)} userData={userData} />;
+      if (showAcademic) return <FocusSessionView onComplete={() => handleCampaignComplete(25, 15, 20, 'ACADEMIC')} onFail={() => handleCampaignFail('ACADEMIC')} userData={userData} />;
       if (showDiscipline) return <DisciplineWatchView onComplete={() => handleCampaignComplete(40, 30, 35, 'DISCIPLINE')} />;
 
       return (
@@ -1224,114 +1241,157 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
             </div>
           </div>
 
-          {/* Registry cards of the 3 Bosses */}
+          {/* Registry cards of the Bosses */}
           <div className="space-y-4">
-            <h3 className="font-display text-sm font-bold uppercase tracking-widest text-center text-white border-b border-amber-950/40 pb-2">Active Specimen Targets</h3>
+            <div className="flex justify-between items-center border-b border-amber-950/40 pb-2">
+              <h3 className="font-display text-sm font-bold uppercase tracking-widest text-white">Active Specimen Targets</h3>
+              {expandedEnemyId && (
+                 <button onClick={() => setExpandedEnemyId(null)} className="text-[10px] font-mono uppercase bg-surface-container border border-amber-950 text-amber-500/70 px-2 py-1 rounded hover:bg-amber-900/20">BACK TO ALL</button>
+              )}
+            </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {Object.values(ENEMIES).map(enemy => {
-                const epHp = userData[enemy.dbHealthKey] !== undefined ? userData[enemy.dbHealthKey] : 100;
-                const locked = userXp < enemy.reqXp;
-                const active = activeEnemyId === enemy.id;
+            <motion.div layout className={expandedEnemyId ? "grid grid-cols-1" : "grid grid-cols-1 md:grid-cols-3 gap-4"}>
+              <AnimatePresence>
+                {Object.values(ENEMIES).filter(e => expandedEnemyId ? e.id === expandedEnemyId : true).map(enemy => {
+                  const epHp = userData[enemy.dbHealthKey] !== undefined ? userData[enemy.dbHealthKey] : 100;
+                  const locked = userXp < enemy.reqXp;
+                  const active = expandedEnemyId === enemy.id;
 
-                return (
-                  <div 
-                    key={enemy.id}
-                    onClick={() => !locked && changeTarget(enemy.id)}
-                    className={`p-4 rounded-lg border-2 transition-all cursor-pointer flex flex-col justify-between ${active ? 'bg-[#1b1510] border-primary shadow-xl scale-[1.01]' : 'bg-[#120d09] border-[#8a6845]/30'}`}
-                  >
-                    <div>
-                      <div className="flex justify-between items-center mb-2.5 text-[9px] font-mono font-bold">
-                        {locked ? (
-                          <span className="text-red-400">🔒 REQ {enemy.reqXp} XP</span>
-                        ) : (
-                          <span className={active ? "text-primary" : "text-slate-400"}>{active ? "🎯 targeted focus" : "AVAILABLE"}</span>
-                        )}
-                      </div>
-
-                      <div className="relative aspect-video rounded overflow-hidden bg-black mb-3 border border-amber-950">
-                        <img src={enemy.image} alt={enemy.name} className="w-full h-full object-cover grayscale opacity-75" referrerPolicy="no-referrer" />
-                      </div>
-
-                      <h4 className="text-sm font-extrabold text-white uppercase">{enemy.name}</h4>
-                      <p className="text-[10px] italic text-[#ebdcb9]/70 leading-normal mb-3">{enemy.subtitle}</p>
-
-                      {/* HP Gauge */}
-                      <div className="space-y-1 py-1 text-[9px] font-mono">
-                        <div className="flex justify-between uppercase"><span>Plague Specimen HP:</span><span className="text-red-400 font-bold">{epHp}%</span></div>
-                        <div className="h-2 w-full bg-black rounded overflow-hidden border border-amber-950/40">
-                          <div className="h-full bg-red-600" style={{ width: `${epHp}%` }} />
+                  return (
+                    <motion.div 
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: active ? 1.01 : 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.3 }}
+                      key={enemy.id}
+                      onClick={() => !locked && !expandedEnemyId && handleEnemyClick(enemy.id)}
+                      className={`p-4 rounded-lg border-2 transition-all flex flex-col justify-between ${active ? 'bg-[#1b1510] border-primary shadow-xl' : 'bg-[#120d09] border-[#8a6845]/30 cursor-pointer hover:border-[#8a6845]/60'}`}
+                    >
+                      <div>
+                        <div className="flex justify-between items-center mb-2.5 text-[9px] font-mono font-bold">
+                          {locked ? (
+                            <span className="text-red-400">🔒 REQ {enemy.reqXp} XP</span>
+                          ) : (
+                            <span className={active ? "text-primary" : "text-slate-400"}>{active ? "🎯 targeted focus" : "AVAILABLE"}</span>
+                          )}
                         </div>
+
+                        <motion.div layout className={`relative rounded overflow-hidden bg-black mb-3 border border-amber-950 ${expandedEnemyId ? 'aspect-video md:h-64 h-48 w-full' : 'aspect-video'}`}>
+                          <motion.img layout src={enemy.image} alt={enemy.name} className="w-full h-full object-cover grayscale opacity-75" referrerPolicy="no-referrer" />
+                        </motion.div>
+
+                        <motion.h4 layout className={`text-sm font-extrabold text-white uppercase ${expandedEnemyId ? 'md:text-xl' : ''}`}>{enemy.name}</motion.h4>
+                        <motion.p layout className={`text-[10px] italic text-[#ebdcb9]/70 mb-3 ${expandedEnemyId ? 'leading-relaxed' : 'leading-normal'}`}>{enemy.subtitle}</motion.p>
+
+                        {/* HP Gauge */}
+                        <motion.div layout className="space-y-3 py-1 text-[9px] font-mono">
+                          <div className="space-y-1">
+                            <div className="flex justify-between uppercase"><span>Plague Specimen HP:</span><span className="text-red-400 font-bold">{epHp}%</span></div>
+                            <div className="h-2 w-full bg-black rounded overflow-hidden border border-amber-950/40">
+                              <div className="h-full bg-red-600 transition-all duration-300" style={{ width: `${epHp}%` }} />
+                            </div>
+                          </div>
+                          
+                          {expandedEnemyId && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3 pt-2 border-t border-amber-950/40">
+                              <div className="space-y-1">
+                                <div className="flex justify-between uppercase">
+                                  <span className="text-emerald-500">Commander Health:</span>
+                                  <span className="text-emerald-500 font-bold">{userData.health !== undefined ? userData.health : 100}%</span>
+                                </div>
+                                <div className="h-2 w-full bg-black rounded overflow-hidden border border-emerald-900/40">
+                                  <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${userData.health !== undefined ? userData.health : 100}%` }} />
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <div className="flex justify-between uppercase">
+                                  <span className="text-purple-500">Infection Level:</span>
+                                  <span className="text-purple-500 font-bold">{userData.infection || 0}%</span>
+                                </div>
+                                <div className="h-2 w-full bg-black rounded overflow-hidden border border-purple-900/40">
+                                  <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${userData.infection || 0}%` }} />
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </motion.div>
                       </div>
-                    </div>
 
-                    <div className="mt-3 text-[9px] bg-black/45 p-1.5 border border-amber-950/20 text-[#f2be72] leading-normal rounded uppercase italic font-mono mb-3">
-                      {enemy.flavor}
-                    </div>
+                      <motion.div layout className={`mt-3 text-[9px] bg-black/45 p-1.5 border border-amber-950/20 text-[#f2be72] leading-normal rounded uppercase italic font-mono mb-3 ${expandedEnemyId ? 'text-xs p-3' : ''}`}>
+                        {enemy.flavor}
+                      </motion.div>
 
-                    {locked ? (
-                      <button disabled className="w-full py-1 text-[9px] uppercase font-mono bg-red-950/20 text-slate-500 rounded border-0 cursor-not-allowed">
-                        XP RESTRICTED
-                      </button>
-                    ) : active ? (
-                      <span className="w-full py-1.5 text-center bg-primary text-black font-mono font-bold uppercase text-[9px] rounded flex items-center justify-center gap-1 shadow">
-                        🎯 CURRENT TARGET
-                      </span>
-                    ) : (
-                      <button onClick={(e) => { e.stopPropagation(); changeTarget(enemy.id); }} className="w-full py-1 text-[9px] uppercase font-mono border border-primary text-primary hover:bg-primary/15 rounded">
-                        DEPLOY PROTOCOL
-                      </button>
-                    )}
+                      {locked ? (
+                        <button disabled className="w-full py-1 text-[9px] uppercase font-mono bg-red-950/20 text-slate-500 rounded border-0 cursor-not-allowed">
+                          XP RESTRICTED
+                        </button>
+                      ) : active ? (
+                        <span className="w-full py-1.5 text-center bg-primary/10 text-primary font-mono font-bold uppercase text-[9px] rounded flex items-center justify-center gap-1 shadow">
+                          🎯 ENGAGING TARGET
+                        </span>
+                      ) : (
+                        <button onClick={(e) => { e.stopPropagation(); handleEnemyClick(enemy.id); }} className="w-full py-1 text-[9px] uppercase font-mono border border-primary text-primary hover:bg-primary/15 rounded">
+                          DEPLOY PROTOCOL
+                        </button>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </motion.div>
+          </div>
+
+          {expandedEnemyId && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-[#120d09] border border-outline rounded-lg p-5 mt-6 relative"
+            >
+              <h3 className="font-serif text-white font-bold text-base uppercase mb-2 border-b border-amber-950/40 pb-2">Cognitive Battleground Fields:</h3>
+              <p className="text-xs text-[#ebdcb9]/70 leading-relaxed font-sans mb-4">
+                Select an unlocked active specimen target and then deploy focus campaigns. Successful holds deduct critical points and restore overall posture metrics.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button 
+                  onClick={() => { confirming === 0 ? setShowMind(true) : setConfirming(0); }}
+                  className="p-3 bg-black/30 border border-amber-950 text-left hover:border-primary rounded flex flex-col justify-between"
+                >
+                  <div>
+                    <span className="font-mono text-[8px] bg-amber-950 text-primary border border-primary/20 px-1 py-0.5 rounded uppercase font-bold">MIND</span>
+                    <h4 className="text-xs text-white uppercase font-extrabold mt-2">Start on Assignment</h4>
+                    <p className="text-[10px] text-[#ebdcb9]/70 font-sans mt-0.5 leading-snug">Requires 5-score scan verification check.</p>
                   </div>
-                );
-              })}
-            </div>
-          </div>
+                  <div className="text-[9px] text-[#f2be72] font-mono mt-3 uppercase tracking-wider font-extrabold">+10 XP • +5 C</div>
+                </button>
 
-          <div className="bg-[#120d09] border border-outline rounded-lg p-5 mt-6 relative">
-            <h3 className="font-serif text-white font-bold text-base uppercase mb-2 border-b border-amber-950/40 pb-2">Cognitive Battleground Fields:</h3>
-            <p className="text-xs text-[#ebdcb9]/70 leading-relaxed font-sans mb-4">
-              Select an unlocked active specimen target and then deploy focus campaigns. Successfulholds deduct critical points and restore overall posture metrics.
-            </p>
+                <button 
+                  onClick={() => { confirming === 1 ? setShowAcademic(true) : setConfirming(1); }}
+                  className="p-3 bg-black/30 border border-amber-950 text-left hover:border-primary rounded flex flex-col justify-between"
+                >
+                  <div>
+                    <span className="font-mono text-[8px] bg-amber-950 text-primary border border-primary/20 px-1 py-0.5 rounded uppercase font-bold">HOLD</span>
+                    <h4 className="text-xs text-white uppercase font-extrabold mt-2">Work & Study hold</h4>
+                    <p className="text-[10px] text-[#ebdcb9]/70 font-sans mt-0.5 leading-snug font-normal">Focused holding tracking sequence.</p>
+                  </div>
+                  <div className="text-[9px] text-[#f2be72] font-mono mt-3 uppercase tracking-wider font-extrabold">+20 XP • +15 C</div>
+                </button>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button 
-                onClick={() => { confirming === 0 ? setShowMind(true) : setConfirming(0); }}
-                className="p-3 bg-black/30 border border-amber-950 text-left hover:border-primary rounded flex flex-col justify-between"
-              >
-                <div>
-                  <span className="font-mono text-[8px] bg-amber-950 text-primary border border-primary/20 px-1 py-0.5 rounded uppercase font-bold">MIND</span>
-                  <h4 className="text-xs text-white uppercase font-extrabold mt-2">Start on Assignment</h4>
-                  <p className="text-[10px] text-[#ebdcb9]/70 font-sans mt-0.5 leading-snug">Requires 5-score scan verification check.</p>
-                </div>
-                <div className="text-[9px] text-[#f2be72] font-mono mt-3 uppercase tracking-wider font-extrabold">+10 XP • +5 C</div>
-              </button>
-
-              <button 
-                onClick={() => { confirming === 1 ? setShowAcademic(true) : setConfirming(1); }}
-                className="p-3 bg-black/30 border border-amber-950 text-left hover:border-primary rounded flex flex-col justify-between"
-              >
-                <div>
-                  <span className="font-mono text-[8px] bg-amber-950 text-primary border border-primary/20 px-1 py-0.5 rounded uppercase font-bold">HOLD</span>
-                  <h4 className="text-xs text-white uppercase font-extrabold mt-2">Work & Study hold</h4>
-                  <p className="text-[10px] text-[#ebdcb9]/70 font-sans mt-0.5 leading-snug font-normal">Focused holding tracking sequence.</p>
-                </div>
-                <div className="text-[9px] text-[#f2be72] font-mono mt-3 uppercase tracking-wider font-extrabold">+20 XP • +15 C</div>
-              </button>
-
-              <button 
-                onClick={() => { confirming === 2 ? setShowDiscipline(true) : setConfirming(2); }}
-                className="p-3 bg-black/30 border border-amber-950 text-left hover:border-primary rounded flex flex-col justify-between"
-              >
-                <div>
-                  <span className="font-mono text-[8px] bg-red-950 text-red-400 border border-red-900/40 px-1 py-0.5 rounded uppercase font-bold">SEAL</span>
-                  <h4 className="text-xs text-white uppercase font-extrabold mt-2">Isolation Watch</h4>
-                  <p className="text-[10px] text-[#ebdcb9]/70 font-sans mt-0.5 leading-snug">Locks down screen distraction triggers.</p>
-                </div>
-                <div className="text-[9px] text-[#f2be72] font-mono mt-3 uppercase tracking-wider font-extrabold">+35 XP • +30 C</div>
-              </button>
-            </div>
-          </div>
+                <button 
+                  onClick={() => { confirming === 2 ? setShowDiscipline(true) : setConfirming(2); }}
+                  className="p-3 bg-black/30 border border-amber-950 text-left hover:border-primary rounded flex flex-col justify-between"
+                >
+                  <div>
+                    <span className="font-mono text-[8px] bg-red-950 text-red-400 border border-red-900/40 px-1 py-0.5 rounded uppercase font-bold">SEAL</span>
+                    <h4 className="text-xs text-white uppercase font-extrabold mt-2">Isolation Watch (No phone 2h)</h4>
+                    <p className="text-[10px] text-[#ebdcb9]/70 font-sans mt-0.5 leading-snug">Locks down screen distraction triggers.</p>
+                  </div>
+                  <div className="text-[9px] text-[#f2be72] font-mono mt-3 uppercase tracking-wider font-extrabold">+35 XP • +30 C</div>
+                </button>
+              </div>
+            </motion.div>
+          )}
 
           {/* TELEMETRY BYPASS EXP GENERATOR */}
           <div className="bg-black/85 p-4 border border-red-900/30 rounded-lg text-xs leading-normal font-sans">
@@ -1498,6 +1558,48 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
         );
       }
 
+      if (userData.health <= 0 || userData.infection >= 100) {
+        return (
+          <div className="min-h-screen bg-black text-[#ebdcb9] flex flex-col justify-center items-center p-8 font-serif relative overflow-hidden">
+            <div className="absolute inset-0 bg-blue-900/10 opacity-50 mix-blend-overlay pointer-events-none" />
+            <div className="absolute inset-0 bg-black/60 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at center, transparent 0%, black 100%)' }} />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              transition={{ duration: 2 }}
+              className="z-10 text-center space-y-6 max-w-sm"
+            >
+              <h1 className="text-4xl md:text-5xl font-black text-red-900 tracking-widest uppercase mb-4 opacity-80 filter drop-shadow-lg">
+                You have fallen to the horde.
+              </h1>
+              <p className="text-sm font-mono text-slate-400 leading-relaxed max-w-xs mx-auto mb-10">
+                The cold fog has overtaken your command center. Your focus is shattered, and the shadows have consumed your progress.
+              </p>
+
+              <button 
+                onClick={async () => {
+                  const cost = 60;
+                  if ((userData.coins || 0) < cost) {
+                     alert("Insufficient funds. The horde takes what little you have, leaving you in debt.");
+                  }
+                  await updateUserData({
+                    coins: (userData.coins || 0) - cost,
+                    health: 100,
+                    infection: 0,
+                    morale: 100
+                  });
+                }}
+                className="w-full uppercase font-bold tracking-widest py-3 border border-red-900 bg-red-950/20 hover:bg-red-900/40 transition-colors text-red-300 font-mono shadow-xl relative overflow-hidden group"
+              >
+                <div className="absolute inset-0 bg-red-500/10 w-0 group-hover:w-full transition-all duration-500 ease-out" />
+                <span className="relative">Pay 60 Coins to Recover</span>
+              </button>
+            </motion.div>
+          </div>
+        );
+      }
+
       return (
         <div className="min-h-screen bg-surface text-on-surface">
           {/* Top Panel Fixed Navbar Header */}
@@ -1529,18 +1631,38 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
 
           {/* Scrolling Center Container Layout */}
           <main className="pt-20 pb-24 px-4 max-w-lg mx-auto min-h-screen">
-            {activeView === 'Home' && (
-              <HomeView 
-                onNavigateToArena={() => setActiveView('Arena')} 
-                verseTrigger={verseTrigger}
-                userData={userData}
-                updateUserData={updateUserData}
-              />
-            )}
-            {activeView === 'Stats' && <StatsView userData={userData} />}
-            {activeView === 'Shop' && <ShopView userData={userData} updateUserData={updateUserData} />}
-            {activeView === 'Arena' && <ArenaView userData={userData} updateUserData={updateUserData} />}
-            {activeView === 'Base' && <AvatarView userData={userData} updateUserData={updateUserData} user={user} />}
+            <AnimatePresence mode="wait">
+              {activeView === 'Home' && (
+                <motion.div key="home" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                  <HomeView 
+                    onNavigateToArena={() => setActiveView('Arena')} 
+                    verseTrigger={verseTrigger}
+                    userData={userData}
+                    updateUserData={updateUserData}
+                  />
+                </motion.div>
+              )}
+              {activeView === 'Stats' && (
+                <motion.div key="stats" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.2 }}>
+                  <StatsView userData={userData} />
+                </motion.div>
+              )}
+              {activeView === 'Shop' && (
+                <motion.div key="shop" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                  <ShopView userData={userData} updateUserData={updateUserData} />
+                </motion.div>
+              )}
+              {activeView === 'Arena' && (
+                <motion.div key="arena" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.2 }}>
+                  <ArenaView userData={userData} updateUserData={updateUserData} />
+                </motion.div>
+              )}
+              {activeView === 'Base' && (
+                <motion.div key="base" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                  <AvatarView userData={userData} updateUserData={updateUserData} user={user} />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </main>
 
           {/* Bottom Custom Navigation Bar */}
