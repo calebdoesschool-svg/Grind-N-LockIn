@@ -1,6 +1,6 @@
 // --- MODULE CDN IMPORTS & SETUP ---
     import { initializeApp } from "firebase/app";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "firebase/auth";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
     import { getFirestore, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
     // Hardcoded credentials for Resolving Redundant environment connections
@@ -144,7 +144,12 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
 
     // 1. Google Sign-In View
     function LoginView({ onLoginStart }) {
-      const handleLogin = async () => {
+      const [username, setUsername] = React.useState('');
+      const [password, setPassword] = React.useState('');
+      const [isRegistering, setIsRegistering] = React.useState(false);
+      const [errorMsg, setErrorMsg] = React.useState('');
+
+      const handleGoogleLogin = async () => {
         const provider = new GoogleAuthProvider();
         try {
           await signInWithPopup(auth, provider);
@@ -154,18 +159,85 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
         }
       };
 
+      const handleGuestLogin = async (e) => {
+        e.preventDefault();
+        setErrorMsg('');
+        if (!username || !password) {
+          setErrorMsg('Username and password are required.');
+          return;
+        }
+
+        const email = `${username.toLowerCase().replace(/[^a-z0-9]/g, '')}@grindandlockin.com`;
+
+        try {
+          if (isRegistering) {
+            await createUserWithEmailAndPassword(auth, email, password);
+          } else {
+            await signInWithEmailAndPassword(auth, email, password);
+          }
+        } catch (error) {
+          console.error('Guest login failed:', error);
+          if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-login-credentials') {
+             setErrorMsg('Invalid username or password. Or try registering.');
+          } else if (error.code === 'auth/email-already-in-use') {
+             setErrorMsg('Username already taken. Please log in or choose another.');
+          } else {
+             setErrorMsg('Auth failed: ' + error.message);
+          }
+        }
+      }
+
       return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-surface text-on-surface p-6">
           <div className="w-full max-w-sm bg-surface-container-high border border-outline p-8 flex flex-col items-center shadow-2xl">
             <LucideIcon name="lock" size={64} className="text-primary mb-6 animate-pulse" />
             <h1 className="font-display font-black text-2xl uppercase mb-2 tracking-widest text-primary">Lock-In</h1>
             <p className="text-outline text-center mb-8 uppercase font-mono text-xs tracking-wider">Authenticating Commander Profile...</p>
+            
             <button
-              onClick={handleLogin}
-              className="w-full py-3 bg-primary text-on-primary font-bold uppercase tracking-wider hover:brightness-110 active:scale-95 transition-all focus:outline-none"
+              onClick={handleGoogleLogin}
+              className="w-full py-3 bg-primary text-on-primary font-bold uppercase tracking-wider hover:brightness-110 active:scale-95 transition-all focus:outline-none mb-6"
             >
               Sign in with Google
             </button>
+
+            <div className="w-full border-t border-outline/50 my-6 relative">
+              <span className="absolute left-1/2 -top-2 -translate-x-1/2 bg-surface-container-high px-2 text-outline font-mono text-xs uppercase">OR GUEST LOGIN</span>
+            </div>
+
+            <form onSubmit={handleGuestLogin} className="w-full flex flex-col space-y-3">
+              <input 
+                type="text" 
+                placeholder="Username" 
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                className="w-full bg-surface-container border border-outline text-white px-4 py-2 font-mono placeholder:text-outline/70 focus:outline-none focus:border-primary"
+              />
+              <input 
+                type="password" 
+                placeholder="Password" 
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full bg-surface-container border border-outline text-white px-4 py-2 font-mono placeholder:text-outline/70 focus:outline-none focus:border-primary"
+              />
+              
+              {errorMsg && <p className="text-red-400 text-[10px] font-mono text-center">{errorMsg}</p>}
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-surface-container border border-primary text-primary font-bold uppercase tracking-wider hover:bg-primary/10 active:scale-95 transition-all focus:outline-none"
+              >
+                {isRegistering ? 'Register Guest Account' : 'Log In as Guest'}
+              </button>
+
+              <button 
+                type="button" 
+                onClick={() => setIsRegistering(!isRegistering)}
+                className="text-primary/70 text-[10px] mt-2 font-mono hover:text-primary uppercase"
+              >
+                {isRegistering ? 'Already have a guest account? Log in' : 'Need a guest account? Register'}
+              </button>
+            </form>
           </div>
         </div>
       );
