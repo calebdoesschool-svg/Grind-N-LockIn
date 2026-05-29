@@ -22,41 +22,18 @@
     // --- UTILITIES ---
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import * as lucide from 'lucide';
-const LucideIcon = ({ name, size = 24, className = "" }) => {
-      const ref = React.useRef(null);
-      React.useEffect(() => {
-        if (ref.current && lucide) {
-          ref.current.innerHTML = '';
-          const upperName = name.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
-          const icon = lucide.icons[upperName] || 
-                       lucide.icons[name] || 
-                       lucide.icons['HelpCircle'];
-          if (icon) {
-            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.setAttribute('width', size);
-            svg.setAttribute('height', size);
-            svg.setAttribute('viewBox', '0 0 24 24');
-            svg.setAttribute('fill', 'none');
-            svg.setAttribute('stroke', 'currentColor');
-            svg.setAttribute('stroke-width', '2');
-            svg.setAttribute('stroke-linecap', 'round');
-            svg.setAttribute('stroke-linejoin', 'round');
-            if (className) {
-              className.split(' ').filter(Boolean).forEach(c => svg.classList.add(c));
-            }
-            icon[2].forEach(([tag, attrs]) => {
-              const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
-              Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
-              svg.appendChild(el);
-            });
-            ref.current.appendChild(svg);
-          }
-        }
-      }, [name, size, className]);
+import * as LucideIcons from 'lucide-react';
 
-      return <span ref={ref} className="inline-block" style={{ width: size, height: size, minWidth: size, minHeight: size }} />;
-    };
+const LucideIcon = ({ name, size = 24, className = "" }) => {
+  const upperName = name.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
+  const Icon = LucideIcons[upperName] || LucideIcons[name] || LucideIcons['HelpCircle'];
+  
+  if (!Icon) {
+    return <span className={`inline-block ${className}`} style={{ width: size, height: size, minWidth: size, minHeight: size }} />;
+  }
+  
+  return <Icon size={size} className={className} />;
+};
 
     // Constant definition of enemies inside Arena
     const ENEMIES = {
