@@ -100,7 +100,9 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           clothing: "Oversized faded hoodie beneath a worn military-style coat, loose jeans, muddy boots, messy middle-part hair, tired eyes, slouched posture.",
           clutter: "Workspace cluttered with unfinished assignments, crumpled papers, and coffee stains.",
           item: "Glowing phone, small lantern, messy notebook, pencil, scattered study notes.",
-          fx: "Weak lantern lighting, cold fog outside the window, drifting dust particles, faint screen static around the room."
+          fx: "Weak lantern lighting, cold fog outside the window, drifting dust particles, faint screen static around the room.",
+          image: "https://i.ibb.co.com/Dg8HD0CT/14.png",
+          rank: "The Recruit"
         };
       } else if (xp <= 1000) {
         return {
@@ -109,7 +111,9 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           clothing: "Cleaner layered outfit with rolled sleeves, scarf, fingerless gloves, neater hair, stronger posture.",
           clutter: "Desk becomes more organized with stacked books and pinned notes.",
           item: "Pocket watch, leather study planner, brighter desk lantern, satchel for assignments.",
-          fx: "Lantern glow becomes warmer, fog slightly fades, subtle ember particles appear around the desk."
+          fx: "Lantern glow becomes warmer, fog slightly fades, subtle ember particles appear around the desk.",
+          image: "https://i.ibb.co.com/sfMrH0f/15.png",
+          rank: "The Blessed"
         };
       } else if (xp <= 2000) {
         return {
@@ -118,7 +122,9 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           clothing: "Long military-inspired coat with layered modern student clothing, cleaner boots, calmer expression, confident upright posture.",
           clutter: "Workspace resembles a tactical study station.",
           item: "Headphones around neck, organized notebooks, wall maps, laptop stand, tactical pencil case, study timer.",
-          fx: "Warm firelight mixes with cool moonlight, floating ash/ember particles, calmer room atmosphere, rain ambience outside windows."
+          fx: "Warm firelight mixes with cool moonlight, floating ash/ember particles, calmer room atmosphere, rain ambience outside windows.",
+          image: "https://i.ibb.co.com/mCNf68sL/16.png",
+          rank: "Militiaman"
         };
       } else if (xp <= 3500) {
         return {
@@ -127,7 +133,9 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           clothing: "Refined dark-toned command outfit with fitted coat, polished boots, belts, gloves, and organized layered clothing.",
           clutter: "Workspace now resembles a command room with strategic maps and banners.",
           item: "Mechanical focus timer, upgraded lantern setup, advanced study station, decorated shelves, military-style journal, brass compass.",
-          fx: "Fog retreats further into the background, cinematic shadows, stronger lantern glow, subtle orchestral ambience effect."
+          fx: "Fog retreats further into the background, cinematic shadows, stronger lantern glow, subtle orchestral ambience effect.",
+          image: "https://i.ibb.co.com/YF2tLKPq/17.png",
+          rank: "Veteran"
         };
       } else {
         return {
@@ -136,7 +144,9 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           clothing: "Fully composed commander appearance with elegant military-inspired fashion, layered coat, clean gloves, polished boots, relaxed but confident posture.",
           clutter: "Workspace becomes an elite late-night command center.",
           item: "Personalized productivity setup, custom lantern array, decorated command desk, medals, banners, premium study tools, elite room customization.",
-          fx: "Golden lantern glow fills the room, cinematic dawn lighting, glowing ember particles, soft snowfall/rain ambience, complete disappearance of screen static and distraction effects."
+          fx: "Golden lantern glow fills the room, cinematic dawn lighting, glowing ember particles, soft snowfall/rain ambience, complete disappearance of screen static and distraction effects.",
+          image: "https://i.ibb.co.com/HDy0L5n9/18.png",
+          rank: "Campaign Survivor"
         };
       }
     }
@@ -347,6 +357,7 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
         { title: 'No phone and social media for 2 hours', completed: false },
       ]);
       const [isCandleLit, setIsCandleLit] = React.useState(false);
+      const [isLanternLit, setIsLanternLit] = React.useState(false);
       const [currentVerseIndex, setCurrentVerseIndex] = React.useState(0);
       const [readingBible, setReadingBible] = React.useState(false);
       const [readTime, setReadTime] = React.useState(300);
@@ -492,12 +503,14 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           {/* Table setup visual displays */}
           <div className="mt-4 flex gap-6 text-amber-900 justify-center items-center">
             {userData?.purchasedItems?.includes('lantern') ? (
-              <img 
-                src="https://i.ibb.co.com/HDfD6v2N/Yeah-after-looking-through-the-wiki-pages-and-customization-pages-the-vibe-you-re-probably-liking.png" 
-                alt="Lantern Set" 
-                className="w-44 h-44 object-contain" 
-                referrerPolicy="no-referrer" 
-              />
+              <button onClick={() => setIsLanternLit(!isLanternLit)} className="p-0 border-0 focus:outline-none transition-transform hover:scale-105">
+                <img 
+                  src={isLanternLit ? "https://i.ibb.co.com/q214Rf7/Yeah-after-looking-through-the-wiki-pages-and-customization-pages-the-vibe-you-re-probably-liking.png" : "https://i.ibb.co.com/HDfD6v2N/Yeah-after-looking-through-the-wiki-pages-and-customization-pages-the-vibe-you-re-probably-liking.png"}
+                  alt="Lantern Set" 
+                  className="w-44 h-44 object-contain" 
+                  referrerPolicy="no-referrer" 
+                />
+              </button>
             ) : (
               <button onClick={() => setIsCandleLit(!isCandleLit)} className="p-0 border-0 focus:outline-none">
                 <img src={isCandleLit ? "https://i.ibb.co.com/9mLjJKJy/6.png" : "https://i.ibb.co.com/qFxz6gLG/7.png"} alt="Candle" className="w-44 h-44" referrerPolicy="no-referrer" />
@@ -618,12 +631,12 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
 
     // 5. ShopView
     const SHOP_ITEMS = [
-      { id: 'lantern', name: 'Lantern Desk Set', cost: 40, description: 'Replaces normal desk lamps with warm lanterns, candles, and cinematic firelight ambience.' },
+      { id: 'lantern', name: 'Lantern Desk Set', cost: 40, description: 'Replaces normal desk lamps with warm lanterns, candles, and cinematic firelight ambience.', image: 'https://i.ibb.co.com/chZHRPCV/Yeah-after-looking-through-the-wiki-pages-and-customization-pages-the-vibe-you-re-probably-liking.png' },
       { id: 'baguette', name: 'Baguette Rations', cost: 30, description: 'Improves health and morale during tough times.' },
-      { id: 'shield', name: 'Focus Shield', cost: 100, description: 'Reinforced morale insignia that protects one habit streak from resetting if the player misses a single day.' },
-      { id: 'bible', name: 'Bible', cost: 110, description: 'Reduces infection, when it is too high.' },
-      { id: 'desk', name: 'Desk Setup Pack', cost: 45, description: 'Unlocks additional command-desk decorations.' },
-      { id: 'cross', name: 'Cross Necklace', cost: 55, description: 'Small passive protection charm worn by the avatar. Reduces minor infection effects.' },
+      { id: 'shield', name: 'Focus Shield', cost: 100, description: 'Reinforced morale insignia that protects one habit streak from resetting if the player misses a single day.', image: 'https://i.ibb.co.com/Jwd1CcxQ/Yeah-after-looking-through-the-wiki-pages-and-customization-pages-the-vibe-you-re-probably-liking.png' },
+      { id: 'bible', name: 'Bible', cost: 110, description: 'Reduces infection, when it is too high.', image: 'https://i.ibb.co.com/VYQdJNR8/Yeah-after-looking-through-the-wiki-pages-and-customization-pages-the-vibe-you-re-probably-liking.png' },
+      { id: 'desk', name: 'Desk Setup Pack', cost: 45, description: 'Unlocks additional command-desk decorations.', image: 'https://i.ibb.co.com/Z6q3Tbmd/Yeah-after-looking-through-the-wiki-pages-and-customization-pages-the-vibe-you-re-probably-liking.png' },
+      { id: 'cross', name: 'Cross Necklace', cost: 55, description: 'Small passive protection charm worn by the avatar. Reduces minor infection effects.', image: 'https://i.ibb.co.com/YwGzTYw/Yeah-after-looking-through-the-wiki-pages-and-customization-pages-the-vibe-you-re-probably-liking.png' },
     ];
 
     function ShopView({ userData, updateUserData }) {
@@ -667,6 +680,11 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
                     <h3 className="font-bold text-base text-primary uppercase">{item.name}</h3>
                     <span className="font-mono text-sm font-bold text-amber-200">{item.cost} COINS</span>
                   </div>
+                  {item.image && (
+                    <div className="w-full aspect-video rounded overflow-hidden border border-outline/20">
+                      <img src={item.image} alt={item.name} className="w-full h-full object-cover grayscale opacity-80" referrerPolicy="no-referrer" />
+                    </div>
+                  )}
                   <p className="text-xs text-[#ebdcb9]/80 font-sans leading-relaxed">{item.description}</p>
                   
                   {purchased ? (
@@ -712,10 +730,14 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           
           <div className="flex flex-col items-center">
             <div className="relative mb-4">
-              <div className="w-28 h-28 rounded-full border-4 border-primary bg-surface-container-high flex items-center justify-center shadow-2xl">
-                <LucideIcon name="user" size={56} className="text-primary"/>
+              <div className="w-32 h-48 rounded-lg border-4 border-primary bg-surface-container-high flex items-center justify-center shadow-2xl overflow-hidden relative">
+                {evo.image ? (
+                  <img src={evo.image} alt={evo.title} className="w-full h-full object-cover" />
+                ) : (
+                  <LucideIcon name="user" size={56} className="text-primary"/>
+                )}
               </div>
-              <div className="absolute -bottom-1 -right-1 bg-primary text-on-primary text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border border-surface shadow flex items-center gap-1">
+              <div className="absolute -bottom-2 -right-2 bg-primary text-on-primary text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-surface shadow flex items-center gap-1">
                 <span>Lvl {evo.level}</span>
               </div>
             </div>
@@ -758,52 +780,7 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
               </div>
             )}
             
-            <p className="text-xs uppercase font-mono tracking-widest text-amber-200">Rank: Focus Commander</p>
-          </div>
-
-          {/* Evolution Telemetry Sheet */}
-          <div 
-            className="w-full p-5 rounded-lg border-2 border-amber-950 bg-[#1e130a] text-[#f5ebd3] shadow-2xl relative overflow-hidden"
-          >
-            <div className="absolute top-1 right-2 p-1 text-[8px] font-mono tracking-widest text-[#ebdcb9]/40 uppercase">
-              Profile telemetry
-            </div>
-            
-            <div className="flex items-center gap-3 border-b border-amber-950/40 pb-3 mb-4">
-              <div className="h-8 w-8 rounded-full bg-amber-950 flex items-center justify-center font-bold font-mono text-xs text-[#f2be72] border border-[#f2be72]/60">
-                {evo.level}
-              </div>
-              <div>
-                <span className="text-[8px] uppercase font-mono tracking-wider text-[#f2be72] font-black block">ACTIVE EVOLUTION STATE</span>
-                <h4 className="text-sm font-bold uppercase text-white tracking-wide">{evo.title}</h4>
-              </div>
-            </div>
-
-            <div className="space-y-3.5 text-xs text-left">
-              <div>
-                <span className="font-mono text-[9px] uppercase tracking-wider text-[#f2be72] block font-extrabold mb-1">Current Dress & Posture:</span>
-                <p className="text-xs leading-relaxed pl-2 border-l-2 border-[#f2be72]/45 bg-black/15 p-1.5 rounded">{evo.clothing}</p>
-              </div>
-              {evo.clutter && (
-                <div>
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-[#f2be72] block font-extrabold mb-1">Station Atmosphere:</span>
-                  <p className="text-xs leading-relaxed pl-2 border-l-2 border-[#f2be72]/45 bg-black/15 p-1.5 rounded">{evo.clutter}</p>
-                </div>
-              )}
-              <div>
-                <span className="font-mono text-[9px] uppercase tracking-wider text-[#f2be72] block font-extrabold mb-1">Equipped Productivity Weapons:</span>
-                <p className="text-xs leading-relaxed pl-2 border-l-2 border-[#f2be72]/45 bg-black/15 p-1.5 rounded">{evo.item}</p>
-              </div>
-              <div>
-                <span className="font-mono text-[9px] uppercase tracking-wider text-[#f2be72] block font-extrabold mb-1">Aura Ambient Energy:</span>
-                <p className="text-xs leading-relaxed pl-2 border-l-2 border-[#f2be72]/45 bg-black/15 p-1.5 rounded">{evo.fx}</p>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-amber-950/40 flex justify-between items-center text-[10px] font-mono">
-              <span className="text-[#ebdcb9]/50 font-bold uppercase">Tactical State Account</span>
-              <span className="text-[#f2be72] bg-black/50 px-2 py-0.5 rounded border border-[#f2be72]/20 font-black">{userXp} XP</span>
-            </div>
+            <p className="text-xs uppercase font-mono tracking-widest text-amber-200">Rank: {evo.rank}</p>
           </div>
 
           {/* Simple inventory */}
@@ -909,16 +886,73 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
         }
       }
 
-      function verifyAssignment() {
-        setVerification("✅ VERIFICATION PASSED");
-        setTimeout(() => {
-          onComplete();
-        }, 1500);
-      }
+      const failVerification = (msg) => {
+        setVerification(`❌ FAILED: ${msg}`);
+        setTimeout(() => setVerification(""), 3000);
+      };
+
+      const verifyAssignmentImage = async () => {
+        if (!videoRef.current) return;
+        setVerification("ANALYZING SCENE...");
+
+        try {
+          const video = videoRef.current;
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          
+          canvas.width = video.videoWidth || 640;
+          canvas.height = video.videoHeight || 480;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+          
+          let skinPixels = 0;
+          let uniqueBrightnessZones = 0;
+          const brightnessBuckets = {};
+
+          for (let i = 0; i < imageData.length; i += 80) {
+            const r = imageData[i];
+            const g = imageData[i + 1];
+            const b = imageData[i + 2];
+
+            const brightness = Math.floor((r + g + b) / 3 / 20);
+            brightnessBuckets[brightness] = true;
+
+            const isSkin = r > 95 && g > 40 && b > 20 && r > g && r > b;
+            if (isSkin) {
+              skinPixels++;
+            }
+          }
+
+          uniqueBrightnessZones = Object.keys(brightnessBuckets).length;
+          const totalSamples = imageData.length / 80;
+          const skinRatio = skinPixels / totalSamples;
+
+          if (skinRatio > 0.45) {
+            failVerification("Face or hand detected. Show workspace instead.");
+            return;
+          }
+
+          if (uniqueBrightnessZones < 5) {
+            failVerification("Workspace not detected. Show desk/paper.");
+            return;
+          }
+
+          setVerification("✅ VERIFICATION PASSED");
+          
+          setTimeout(() => {
+            onComplete();
+          }, 1500);
+
+        } catch (err) {
+          console.error(err);
+          failVerification("Verification system malfunction.");
+        }
+      };
 
       return (
         <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center p-5 font-mono">
-          <h1 className="text-2xl font-bold uppercase tracking-widest text-[#9b7b4f] mb-4">THE CAMPAIGN BEGINS</h1>
+          <h1 className="text-2xl font-bold uppercase tracking-widest text-[#9b7b4f] mb-4 text-center">THE CAMPAIGN BEGINS</h1>
 
           {!cameraReady && <p className="text-slate-400">Starting camera...</p>}
 
@@ -931,12 +965,12 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           />
 
           {verification ? (
-            <div className="mt-5 text-[22px] font-bold text-emerald-400">
+             <div className={`mt-5 text-center text-sm md:text-base font-bold whitespace-pre-line ${verification.startsWith('✅') ? 'text-emerald-400' : verification.startsWith('❌') ? 'text-red-400' : 'text-slate-300'}`}>
               {verification}
             </div>
           ) : (
             <button
-              onClick={verifyAssignment}
+              onClick={verifyAssignmentImage}
               className="mt-6 px-6 py-3 rounded-xl border-none bg-[#9b7b4f] text-white text-lg font-bold uppercase tracking-widest hover:bg-[#8a6845] transition-colors"
             >
               VERIFY ASSIGNMENT
@@ -1600,6 +1634,8 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
         );
       }
 
+      const evo = getAvatarEvolution(userData.xp || 0);
+
       return (
         <div className="min-h-screen bg-surface text-on-surface">
           {/* Top Panel Fixed Navbar Header */}
@@ -1607,15 +1643,19 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => setActiveView('Base')}
-                className="w-10 h-10 border border-primary bg-[#2d3542] overflow-hidden hover:scale-105 transition-all focus:outline-none cursor-pointer"
+                className="w-10 h-10 border border-primary bg-[#2d3542] overflow-hidden hover:scale-105 transition-all focus:outline-none cursor-pointer flex justify-center items-center"
                 title="Profile Base"
               >
-                <img 
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDd6rr2dAH2K7gWbIZDcrb1qFZO5aEfHhrQsJwRMchL8S0TpgjismFbaS1tBiBdiA4wg_ucDrw0ifONMik4m-n8aGO4Qw9W9Lm9sEEZnZrTox3VWgpti1PMacDTa6LvDOSeAfBXTz-hxi8Ex0cBq6py0Bic3bJX7RnkhCyVIiWjel3po2G7ELRwbEKnGgQK-cTnXuF53I20CIKKbV0xYP0t3s4Vb184i06_ABSdxXnb2o3s4I6sR1LkVOwKoO4zObIQ5950JfKB-jVq" 
-                  alt="Officer Profile Thumbnail"
-                  className="w-full h-full object-cover grayscale opacity-80"
-                  referrerPolicy="no-referrer"
-                />
+                {evo.image ? (
+                  <img 
+                    src={evo.image} 
+                    alt="Officer Profile Thumbnail"
+                    className="w-full h-full object-cover opacity-80"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <LucideIcon name="user" size={24} className="text-primary"/>
+                )}
               </button>
               <div className="flex flex-col text-left">
                 <span className="font-display text-xs uppercase tracking-widest text-primary font-black">GRIND &</span>
