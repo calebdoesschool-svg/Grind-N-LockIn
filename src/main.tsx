@@ -732,7 +732,7 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
     // 5. ShopView
     const SHOP_ITEMS = [
       { id: 'lantern', name: 'Lantern Desk Set', cost: 40, description: 'Replaces normal desk lamps with warm lanterns, candles, and cinematic firelight ambience.', image: 'https://i.ibb.co.com/chZHRPCV/Yeah-after-looking-through-the-wiki-pages-and-customization-pages-the-vibe-you-re-probably-liking.png' },
-      { id: 'baguette', name: 'Baguette Rations', cost: 30, description: 'Improves health and morale during tough times.' },
+      { id: 'baguette', name: 'Baguette Rations', cost: 30, description: 'Improves health and morale during tough times.', image: 'https://i.ibb.co.com/3mLp7sMp/Yeah-after-looking-through-the-wiki-pages-and-customization-pages-the-vibe-you-re-probably-liking.png' },
       { id: 'shield', name: 'Focus Shield', cost: 100, description: 'Reinforced morale insignia that protects one habit streak from resetting if the player misses a single day.', image: 'https://i.ibb.co.com/Jwd1CcxQ/Yeah-after-looking-through-the-wiki-pages-and-customization-pages-the-vibe-you-re-probably-liking.png' },
       { id: 'bible', name: 'Bible', cost: 110, description: 'Reduces infection, when it is too high.', image: 'https://i.ibb.co.com/VYQdJNR8/Yeah-after-looking-through-the-wiki-pages-and-customization-pages-the-vibe-you-re-probably-liking.png' },
       { id: 'desk', name: 'Desk Setup Pack', cost: 45, description: 'Unlocks additional command-desk decorations.', image: 'https://i.ibb.co.com/Z6q3Tbmd/Yeah-after-looking-through-the-wiki-pages-and-customization-pages-the-vibe-you-re-probably-liking.png' },
