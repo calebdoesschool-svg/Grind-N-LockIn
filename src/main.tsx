@@ -24,6 +24,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import * as LucideIcons from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import confetti from 'canvas-confetti';
 
 const LucideIcon = ({ name, size = 24, className = "" }) => {
   const upperName = name.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
@@ -377,7 +378,13 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
                 clearInterval(timer);
                 setReadingBible(false);
                 setReadTime(300);
-                updateUserData({ infection: Math.max((userData.infection || 0) - 20, 0) });
+                
+                const updates = { infection: Math.max((userData.infection || 0) - 20, 0) };
+                if (userData.purchasedItems?.includes('cross') && userData.purchasedItems?.includes('bible')) {
+                   updates.hasReadBibleWithCross = true;
+                }
+                updateUserData(updates);
+                
                 alert("You feel purified. Infection reduced by 20%.");
                 return 300;
               }
@@ -386,7 +393,7 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           }, 1000);
         }
         return () => clearInterval(timer);
-      }, [readingBible, userData.infection, updateUserData]);
+      }, [readingBible, userData.infection, userData.purchasedItems, updateUserData]);
 
       const toggleObjective = (index) => {
         const objective = objectives[index];
@@ -400,13 +407,14 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           const shieldActive = userData.purchasedItems?.includes('shield');
           
           if (shieldActive && Math.random() > 0.5) {
-            alert('Focus Shield protected you from morale decay!');
+            alert('Focus Shield protected you from morale decay and streak reset!');
           } else {
             updateUserData({
               health: Math.max((userData.health !== undefined ? userData.health : 100) - 10, 0),
-              infection: Math.min((userData.infection || 0) + infectionGain, 100)
+              infection: Math.min((userData.infection || 0) + infectionGain, 100),
+              streak: 0
             });
-            alert(`Habit missed! Health -10%, Infection +${infectionGain}%`);
+            alert(`Habit missed! Health -10%, Infection +${infectionGain}%, Streak reset to 0.`);
           }
         } else {
           updateUserData({
@@ -415,9 +423,48 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           });
         }
 
-        setObjectives(prev => prev.map((obj, i) => 
-          i === index ? { ...obj, completed: isNowCompleted } : obj
-        ));
+        setObjectives(prev => {
+          const next = prev.map((obj, i) => i === index ? { ...obj, completed: isNowCompleted } : obj);
+          
+          if (isNowCompleted) {
+            const updates = {};
+            if (next.every(obj => obj.completed)) {
+              updates.hasAnsweredCall = true;
+              
+              const today = new Date().toDateString();
+              if (userData.lastAllObjectivesDate !== today) {
+                const lastDate = userData.lastAllObjectivesDate ? new Date(userData.lastAllObjectivesDate) : null;
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                
+                let nextDays = 1;
+                let nextStreak = 1;
+                if (lastDate && lastDate.toDateString() === yesterday.toDateString()) {
+                   nextDays = (userData.focusedMindDays || 0) + 1;
+                   nextStreak = (userData.streak || 0) + 1;
+                } else if (!lastDate || lastDate.toDateString() !== today) {
+                   nextStreak = 1;
+                } else {
+                   nextStreak = (userData.streak || 0); // shouldn't happen but fallback
+                }
+                
+                updates.lastAllObjectivesDate = today;
+                updates.focusedMindDays = nextDays;
+                updates.streak = Math.max((userData.streak || 0), nextStreak);
+                
+                alert(`All objectives completed today! Streak is now ${updates.streak}.`);
+              }
+            }
+            if (!userData.firstObjectiveCompleted) {
+               updates.firstObjectiveCompleted = true;
+            }
+            if (Object.keys(updates).length > 0) {
+               updateUserData(updates);
+            }
+          }
+
+          return next;
+        });
       };
 
       if (readingBible) {
@@ -553,13 +600,33 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
       );
     }
 
+    const BADGES = [
+      { id: '3day', name: '3 days', isClaimed: (u) => (u.streak || 0) >= 3, description: 'User must have a 3 day streak to obtain the badge', image: 'https://i.ibb.co.com/CxRDyFn/3-day-streak.png' },
+      { id: '7day', name: '7 days', isClaimed: (u) => (u.streak || 0) >= 7, description: 'User must have a 7 day streak to obtain the badge', image: 'https://i.ibb.co.com/B2JT1FZq/7-day-streak.png' },
+      { id: '14day', name: '14 days', isClaimed: (u) => (u.streak || 0) >= 14, description: 'User must have a 14 day streak to obtain the badge', image: 'https://i.ibb.co.com/84gPnXGp/14-day-streak.png' },
+      { id: '30day', name: '30 days', isClaimed: (u) => (u.streak || 0) >= 30, description: 'User must have a 30 day streak to obtain the badge', image: 'https://i.ibb.co.com/3YrQ3f2G/30-day-streak.png' },
+      { id: 'cuirascreen', name: 'Cuirass Broken', isClaimed: (u) => (u.defeatedEnemies || []).includes('cuirascreen'), description: 'Defeat the Cuirascreen once.', image: 'https://i.ibb.co.com/6VFXMxP/cruirascreen-defeated.png' },
+      { id: 'rgbomber', name: 'Bomber down', isClaimed: (u) => (u.defeatedEnemies || []).includes('rgbomber'), description: 'Defeat the RGBomber once.', image: 'https://i.ibb.co.com/cSKQDJ0K/rgbomber-defeated.png' },
+      { id: 'shambler', name: 'Fight back', isClaimed: (u) => (u.defeatedEnemies || []).includes('shambler'), description: 'Defeat the Shambler once.', image: 'https://i.ibb.co.com/Wp2GSxRC/shamblrer-defeated.png' },
+      { id: 'answer', name: 'Answering the call', isClaimed: (u) => u.hasAnsweredCall, description: 'Finish all 3 objectives in one day (start on an assignment, work & study, and no phone (2h)).', image: 'https://i.ibb.co.com/cSyjyYnn/answer-the-call.png' },
+      { id: '50kills', name: '50 kills', isClaimed: (u) => (u.enemiesKilled || 0) >= 50, description: 'Kill 50 enemies in order to get this badge', image: 'https://i.ibb.co.com/fZWxm9S/50-kills.png' },
+      { id: 'recovered', name: 'Recovered', isClaimed: (u) => u.hasRecovered, description: 'Reach 50% infected, then heal to 0%.', image: 'https://i.ibb.co.com/JjWrLVGF/recovered-infection-from-50-to-0.png' },
+      { id: 'veteran', name: 'Dedicated Veteran', isClaimed: (u) => getAvatarEvolution(u.xp || 0).level >= 5, description: 'Reach level 5.', image: 'https://i.ibb.co.com/b5SFxqzn/dedicated-veteran.png' },
+      { id: 'first_step', name: 'First Step', isClaimed: (u) => u.firstObjectiveCompleted, description: 'Complete your first objective.', image: 'https://i.ibb.co.com/LhnnDJk1/first-step.png' },
+      { id: 'focused_mind', name: 'Focused mind', isClaimed: (u) => (u.focusedMindDays || 0) >= 5, description: 'Complete all 3 tasks 5 days in a row.', image: 'https://i.ibb.co.com/C5qDV8jp/focused-mind.png' },
+      { id: 'hordead', name: 'HORDEAD', isClaimed: (u) => u.hasDied, description: 'Have 100% infection percentage or 0% health.', image: 'https://i.ibb.co.com/0VXnStx2/HORDEAD.png' },
+      { id: 'faithful', name: 'Faithful.', isClaimed: (u) => u.hasReadBibleWithCross, description: 'Have a cross necklace, bible, and read it once.', image: 'https://i.ibb.co.com/JwRwTzXj/reading-the-bible.png' }
+    ];
+
     // 4. StatsView
     function StatsView({ userData }) {
+      const claimedBadges = BADGES.filter(badge => badge.isClaimed(userData));
+
       return (
-        <div className="p-4 font-serif text-white max-w-2xl mx-auto">
-          <h2 className="text-2xl font-bold uppercase mb-6 tracking-widest text-center text-primary">Achievements Dashboard</h2>
+        <div className="p-4 font-serif text-white max-w-2xl mx-auto space-y-6 mb-12">
+          <h2 className="text-2xl font-bold uppercase tracking-widest text-center text-primary">Achievements Dashboard</h2>
           
-          <div className="grid grid-cols-3 gap-3 mb-8">
+          <div className="grid grid-cols-3 gap-3">
             <div className="text-center p-4 bg-surface-container-high border border-outline rounded-lg">
               <div className="text-3xl font-bold text-primary">{userData.streak || 0}</div>
               <div className="text-[10px] uppercase tracking-wider opacity-70 mt-1 font-mono">Current Streak</div>
@@ -574,8 +641,25 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
             </div>
           </div>
 
+          {/* Badges Claimed */}
+          <div className="bg-surface-container p-5 border border-outline rounded-lg">
+            <h3 className="text-sm font-bold uppercase mb-3 tracking-widest text-primary">Badges Claimed</h3>
+            {claimedBadges.length > 0 ? (
+              <div className="flex flex-wrap gap-4">
+                {claimedBadges.map(badge => (
+                  <div key={badge.id} className="flex flex-col items-center group">
+                    <img src={badge.image} alt={badge.name} className="w-16 h-16 object-contain" referrerPolicy="no-referrer" />
+                    <span className="text-[10px] uppercase font-mono mt-1 opacity-70 group-hover:opacity-100 transition-opacity">{badge.name}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+               <p className="text-xs text-slate-500 italic text-center py-4">No badges claimed yet. Keep grinding!</p>
+            )}
+          </div>
+
           {/* Simple Sparklines using progress meters representation */}
-          <div className="bg-surface-container p-5 border border-outline rounded-lg mb-6">
+          <div className="bg-surface-container p-5 border border-outline rounded-lg">
             <h3 className="text-sm font-bold uppercase mb-3 tracking-widest text-primary">XP Telemetry History</h3>
             <div className="space-y-3">
               {userData.sessionHistory && userData.sessionHistory.length > 0 ? (
@@ -625,6 +709,22 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
               </table>
             </div>
           </div>
+
+          {/* Badge Information */}
+          <div className="bg-surface-container p-5 border border-outline rounded-lg">
+            <h3 className="text-sm font-semibold uppercase mb-3 tracking-widest text-white">Badge Information</h3>
+            <div className="space-y-4">
+              {BADGES.map(badge => (
+                <div key={badge.id} className="flex items-center gap-4 p-3 bg-black/20 rounded border border-outline/30">
+                  <img src={badge.image} alt={badge.name} className="w-12 h-12 object-contain flex-shrink-0" referrerPolicy="no-referrer" />
+                  <div>
+                    <h4 className="font-bold text-sm text-primary uppercase">{badge.name}</h4>
+                    <p className="text-xs text-slate-300 font-sans leading-relaxed">{badge.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       );
     }
@@ -649,10 +749,9 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
         if (item.id === 'baguette') {
           await updateUserData({
             coins: userData.coins - item.cost,
-            morale: 100,
-            health: 100
+            baguettes: (userData.baguettes || 0) + 1
           });
-          alert(`Success! Restored Morale and Health to 100%.`);
+          alert(`Acquired Baguette Rations! Current stock: ${(userData.baguettes || 0) + 1}`);
         } else {
           await updateUserData({
             coins: userData.coins - item.cost,
@@ -673,7 +772,7 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
 
           <div className="space-y-4">
             {SHOP_ITEMS.map(item => {
-              const purchased = userData.purchasedItems.includes(item.id);
+              const purchased = item.id !== 'baguette' && userData.purchasedItems.includes(item.id);
               return (
                 <div key={item.id} className="bg-surface-container p-4 border border-outline rounded-lg flex flex-col gap-2 shadow">
                   <div className="flex justify-between items-center border-b border-outline/30 pb-2">
@@ -684,6 +783,9 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
                     <div className="w-full aspect-video rounded overflow-hidden border border-outline/20">
                       <img src={item.image} alt={item.name} className="w-full h-full object-cover grayscale opacity-80" referrerPolicy="no-referrer" />
                     </div>
+                  )}
+                  {item.id === 'baguette' && (
+                    <p className="text-xs font-mono text-[#f2be72] mb-1">In inventory: {userData.baguettes || 0}</p>
                   )}
                   <p className="text-xs text-[#ebdcb9]/80 font-sans leading-relaxed">{item.description}</p>
                   
@@ -1198,12 +1300,16 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
         let dbHp = nextHp;
         let bonus = 0;
 
+        const defeatedEnemies = userData.defeatedEnemies || [];
         if (nextHp <= 0) {
           alert(`CRITICAL HIT! You have ANNIHILATED ${activeEnemy.name}!\n\nSpecimen vanquished reward: +${activeEnemy.victoryCoins} Coins!`);
           dbHp = 100;
           nextHp = 100;
           kills += 1;
           bonus = activeEnemy.victoryCoins;
+          if (!defeatedEnemies.includes(activeEnemy.id)) {
+            defeatedEnemies.push(activeEnemy.id);
+          }
         } else {
           alert(`Target struck! Inflicted ${inflicted}% focus damage to ${activeEnemy.name}. Remaining specs health: ${nextHp}%`);
         }
@@ -1216,6 +1322,7 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
           coins: (userData.coins || 0) + coins + bonus,
           xp: (userData.xp || 0) + xp,
           enemiesKilled: kills,
+          defeatedEnemies,
           morale: nextMorale,
           infection: nextInfection,
           sessionHistory: [...(userData.sessionHistory || []), { date: new Date().toLocaleDateString(), xp, type: tag }],
@@ -1256,22 +1363,74 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       };
 
+      const handleConsumeBaguette = async () => {
+        if ((userData.baguettes || 0) <= 0) {
+          alert('You have no Baguette Rations in your inventory.');
+          return;
+        }
+
+        await updateUserData({
+          baguettes: userData.baguettes - 1,
+          health: 100,
+          morale: 100
+        });
+        alert('Consumed Baguette! Morale and Health fully restored.');
+      };
+
       if (showMind) return <MobilizationView onComplete={() => handleCampaignComplete(15, 5, 10, 'MIND')} onCancel={() => setShowMind(false)} />;
       if (showAcademic) return <FocusSessionView onComplete={() => handleCampaignComplete(25, 15, 20, 'ACADEMIC')} onFail={() => handleCampaignFail('ACADEMIC')} userData={userData} />;
       if (showDiscipline) return <DisciplineWatchView onComplete={() => handleCampaignComplete(40, 30, 35, 'DISCIPLINE')} />;
+
+      const health = userData.health !== undefined ? userData.health : 100;
+      const infection = userData.infection || 0;
 
       return (
         <div className="space-y-6 font-serif text-[#ebdcb9]">
           
           {/* Standing info panel */}
-          <div className="bg-[#1f1610] border border-[#ffb057]/20 p-4 rounded-lg flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl">
-            <div>
-              <p className="text-[10px] font-mono tracking-widest uppercase text-[#f2be72]/60">Focus Standing Standing</p>
-              <h2 className="text-lg font-bold uppercase text-white">Commander XP: {userXp}</h2>
+          <div className="bg-[#1f1610] border border-[#ffb057]/20 p-4 rounded-lg flex flex-col gap-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <p className="text-[10px] font-mono tracking-widest uppercase text-[#f2be72]/60">Focus Standing</p>
+                <h2 className="text-lg font-bold uppercase text-white">Commander XP: {userXp}</h2>
+              </div>
+              <div className="text-left sm:text-right">
+                <p className="text-[10px] font-mono tracking-widest uppercase text-red-400">Registry Kills</p>
+                <h3 className="text-sm font-mono text-red-500 font-extrabold uppercase mt-0.5">Vanquished Specs: {userData.enemiesKilled || 0}</h3>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-[10px] font-mono tracking-widest uppercase text-red-400">Registry Kills</p>
-              <h3 className="text-sm font-mono text-red-500 font-extrabold uppercase mt-0.5">Vanquished Specs: {userData.enemiesKilled || 0}</h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-amber-950/40 pt-4">
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <div className="flex justify-between uppercase text-[10px] font-mono">
+                    <span className="text-emerald-500">Commander Health:</span>
+                    <span className="text-emerald-500 font-bold">{health}%</span>
+                  </div>
+                  <div className="h-2 w-full bg-black rounded overflow-hidden border border-emerald-900/40">
+                    <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${health}%` }} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between uppercase text-[10px] font-mono">
+                    <span className="text-purple-500">Infection Level:</span>
+                    <span className="text-purple-500 font-bold">{infection}%</span>
+                  </div>
+                  <div className="h-2 w-full bg-black rounded overflow-hidden border border-purple-900/40">
+                    <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${infection}%` }} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-start sm:justify-end">
+                <button 
+                  onClick={handleConsumeBaguette}
+                  className="bg-[#2d3542] hover:bg-emerald-900/40 border border-outline/30 rounded p-2 flex items-center justify-between text-xs font-mono uppercase transition-colors"
+                >
+                  <span className="text-[#f2be72] mr-3">Consume Baguette</span>
+                  <span className="bg-black/50 px-2 py-0.5 rounded text-emerald-400 font-bold">x {userData.baguettes || 0}</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1468,6 +1627,21 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
       const [verseTrigger, setVerseTrigger] = React.useState(0);
       const [sawStory, setSawStory] = React.useState(true);
 
+      const previousLevelRef = React.useRef(null);
+
+      React.useEffect(() => {
+        const currentLevel = getAvatarEvolution(userData.xp || 0).level;
+        if (previousLevelRef.current !== null && currentLevel > previousLevelRef.current) {
+          confetti({
+            particleCount: 150,
+            spread: 80,
+            origin: { y: 0.6 },
+            colors: ['#f2be72', '#10b981', '#a855f7', '#ffffff']
+          });
+        }
+        previousLevelRef.current = currentLevel;
+      }, [userData.xp]);
+
       const fetchUserData = async (currentUser) => {
         let loadedFirebase = false;
         try {
@@ -1550,21 +1724,38 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
       }, []);
 
       const updateUserData = async (updates) => {
-        if (user) {
-          if (!user.isGuest) {
-            try {
+        // Evaluate dynamic badges logic locally before persisting
+        setUserData(prev => {
+          let updatedFields = { ...updates };
+          
+          if (updatedFields.infection !== undefined) {
+             if (updatedFields.infection >= 50) {
+               updatedFields.hasReached50Infection = true;
+             } else if (updatedFields.infection <= 0 && prev.hasReached50Infection) {
+               updatedFields.hasRecovered = true;
+             }
+          }
+          
+          if ((updatedFields.infection !== undefined && updatedFields.infection >= 100) || 
+              (prev.infection >= 100 && updatedFields.infection === undefined) ||
+              (updatedFields.health !== undefined && updatedFields.health <= 0) ||
+              (prev.health <= 0 && updatedFields.health === undefined)
+             ) {
+                updatedFields.hasDied = true;
+          }
+
+          const newData = { ...prev, ...updatedFields };
+
+          if (user) {
+            localStorage.setItem(`userData_${user.uid}`, JSON.stringify(newData));
+            if (!user.isGuest) {
               const userDocRef = doc(db, 'users', user.uid);
-              await updateDoc(userDocRef, updates);
-            } catch (e) {
-              console.warn("Silent fallback database sync on update", e);
+              updateDoc(userDocRef, updatedFields).catch(e => console.warn("Silent fallback DB sync", e));
             }
           }
-          setUserData(prev => {
-            const newData = { ...prev, ...updates };
-            localStorage.setItem(`userData_${user.uid}`, JSON.stringify(newData));
-            return newData;
-          });
-        }
+
+          return newData;
+        });
       };
 
       if (loading) {
@@ -1592,7 +1783,7 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
         );
       }
 
-      if (userData.health <= 0 || userData.infection >= 100) {
+      if (userData.health <= 0 && userData.infection >= 100) {
         return (
           <div className="min-h-screen bg-black text-[#ebdcb9] flex flex-col justify-center items-center p-8 font-serif relative overflow-hidden">
             <div className="absolute inset-0 bg-blue-900/10 opacity-50 mix-blend-overlay pointer-events-none" />
@@ -1613,9 +1804,22 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
 
               <button 
                 onClick={async () => {
-                  const cost = 60;
+                  const cost = 65;
                   if ((userData.coins || 0) < cost) {
-                     alert("Insufficient funds. The horde takes what little you have, leaving you in debt.");
+                    alert("Insufficient funds. The horde consumes your soul.");
+                    try {
+                      const { signOut, deleteUser } = await import('firebase/auth');
+                      if (auth.currentUser) {
+                        try { await deleteUser(auth.currentUser); } catch(e) {}
+                        await signOut(auth);
+                      }
+                    } catch(e) {}
+                    localStorage.removeItem('current_guest');
+                    if (user && user.uid) {
+                      localStorage.removeItem(`sawStoryIntro_${user.uid}`);
+                    }
+                    window.location.reload();
+                    return;
                   }
                   await updateUserData({
                     coins: (userData.coins || 0) - cost,
@@ -1627,7 +1831,7 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
                 className="w-full uppercase font-bold tracking-widest py-3 border border-red-900 bg-red-950/20 hover:bg-red-900/40 transition-colors text-red-300 font-mono shadow-xl relative overflow-hidden group"
               >
                 <div className="absolute inset-0 bg-red-500/10 w-0 group-hover:w-full transition-all duration-500 ease-out" />
-                <span className="relative">Pay 60 Coins to Recover</span>
+                <span className="relative">Pay 65 Coins to Recover</span>
               </button>
             </motion.div>
           </div>
