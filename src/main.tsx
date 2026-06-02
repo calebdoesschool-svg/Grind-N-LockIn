@@ -44,6 +44,7 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
         name: 'The Shambler',
         subtitle: 'A quiet phantom of the frozen retreat...',
         image: 'https://i.ibb.co.com/KPCwx3X/2.png',
+        banner: 'https://i.ibb.co.com/HphBxN77/Vardohus-Map.webp',
         reqXp: 0,
         dbHealthKey: 'shamblerHealth',
         damageMultiplier: 1.0,
@@ -56,6 +57,7 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
         name: 'RGBomber',
         subtitle: 'A screen-glitching herald of visual static...',
         image: 'https://i.ibb.co.com/CKDRHQRM/3.png',
+        banner: 'https://i.ibb.co.com/fdM2fVMj/San-Sebastian-Map15.webp',
         reqXp: 500,
         dbHealthKey: 'rgbomberHealth',
         damageMultiplier: 0.7,
@@ -68,6 +70,7 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
         name: 'Cuirascreen',
         subtitle: 'An ironclad glass monolith shielding toxic server code...',
         image: 'https://i.ibb.co.com/v4wYQG8K/1.png',
+        banner: 'https://i.ibb.co.com/20pXDg0z/Copenhagen-2.webp',
         reqXp: 1500,
         dbHealthKey: 'cuirascreenHealth',
         damageMultiplier: 0.45,
@@ -1471,7 +1474,13 @@ const LucideIcon = ({ name, size = 24, className = "" }) => {
                         </div>
 
                         <motion.div layout className={`relative rounded overflow-hidden bg-black mb-3 border border-amber-950 ${expandedEnemyId ? 'aspect-video md:h-64 h-48 w-full' : 'aspect-video'}`}>
-                          <motion.img layout src={enemy.image} alt={enemy.name} className="w-full h-full object-cover grayscale opacity-75" referrerPolicy="no-referrer" />
+                          {expandedEnemyId && enemy.banner && (
+                            <div className="absolute inset-0 z-0">
+                              <img src={enemy.banner} alt={enemy.name + " Banner"} className="w-full h-full object-cover opacity-60 mix-blend-screen" referrerPolicy="no-referrer" />
+                              <div className="absolute inset-0 bg-gradient-to-t from-[#1b1510] via-transparent to-[#1b1510]/50" />
+                            </div>
+                          )}
+                          <motion.img layout src={enemy.image} alt={enemy.name} className={`w-full h-full transition-all duration-500 relative z-10 ${expandedEnemyId ? 'object-contain opacity-100 drop-shadow-2xl' : 'object-cover grayscale opacity-80 mix-blend-screen'}`} referrerPolicy="no-referrer" />
                         </motion.div>
 
                         <motion.h4 layout className={`text-sm font-extrabold text-white uppercase ${expandedEnemyId ? 'md:text-xl' : ''}`}>{enemy.name}</motion.h4>
